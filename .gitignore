@@ -1,0 +1,28 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno — NUNCA se sube a Git
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Editores
+.vscode/settings.json
+.idea/
+
+# Tests y cobertura
+coverage/
+.nyc_output/
+
+# Build
+dist/
+build/
