@@ -63,10 +63,20 @@ app.get('/health', async (_req, res) => {
 
 // ── MANEJO DE ERRORES ────────────────────
 app.use((err, req, res, _next) => {
-  logger.error(`${err.status || 500} — ${err.message}`);
-  res.status(err.status || 500).json({
+  // Si es uno de NUESTROS errores (AppError), usamos su código.
+  // Si es un error inesperado (bug), usamos 500 por defecto.
+  const statusCode = err.statusCode || 500;
+
+  // Registramos el error (los 500 son los preocupantes: indican bugs)
+  if (statusCode >= 500) {
+    logger.error(`${statusCode} — ${err.message}`, { stack: err.stack });
+  } else {
+    logger.warn(`${statusCode} — ${err.message}`);
+  }
+
+  res.status(statusCode).json({
     error: err.message || 'Error interno del servidor',
-    ...(isDev && { stack: err.stack }),
+    ...(isDev && statusCode >= 500 && { stack: err.stack }),
   });
 });
 
