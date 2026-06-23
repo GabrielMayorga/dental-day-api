@@ -59,7 +59,7 @@ app.get('/health', async (_req, res) => {
 });
 
 // 👉 Aquí montaremos cada módulo en los próximos sprints:
-// app.use('/api/v1/auth', require('./modules/auth/auth.routes'));
+app.use('/api/v1/auth', require('./modules/auth/auth.routes'));
 
 // ── MANEJO DE ERRORES ────────────────────
 app.use((err, req, res, _next) => {
