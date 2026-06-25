@@ -62,6 +62,7 @@ app.use('/api/v1/appointments', require('./modules/appointments/appointments.rou
 // 👉 Aquí montaremos cada módulo en los próximos sprints:
 app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
+app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
 
 // ── MANEJO DE ERRORES ────────────────────
 app.use((err, req, res, _next) => {
