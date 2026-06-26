@@ -59,6 +59,7 @@ app.get('/health', async (_req, res) => {
 });
 
 app.use('/api/v1/appointments', require('./modules/appointments/appointments.routes'));
+app.use('/api/v1/treatments', require('./modules/treatments/treatments.routes'));
 // 👉 Aquí montaremos cada módulo en los próximos sprints:
 app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
