@@ -14,9 +14,12 @@ const { port, corsOrigin, isDev } = require('./config/env');
 const db = require('./config/database');
 const logger = require('./config/logger');
 
+const { patientRecordsRouter, recordsRouter } = require('./modules/clinical-records/clinicalRecords.routes');
+
 const app = express();
 
 // ── SEGURIDAD ────────────────────────────
+
 app.use(helmet()); // Agrega cabeceras HTTP de seguridad automáticamente
 
 app.use(cors({
@@ -64,6 +67,8 @@ app.use('/api/v1/treatments', require('./modules/treatments/treatments.routes'))
 app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
 app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
+app.use('/api/v1/patients/:patientId/records', patientRecordsRouter);
+app.use('/api/v1/records', recordsRouter);
 
 // ── MANEJO DE ERRORES ────────────────────
 app.use((err, req, res, _next) => {
