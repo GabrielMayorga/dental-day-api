@@ -5,6 +5,7 @@
 require('dotenv').config();        // Carga el archivo .env — debe ir PRIMERO
 require('express-async-errors');   // Permite usar async/await sin try/catch repetido
 
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -67,6 +68,7 @@ app.use('/api/v1/treatments', require('./modules/treatments/treatments.routes'))
 app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
 app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
+app.use('/api/v1/users', require('./modules/users/users.routes'));
 app.use('/api/v1/patients/:patientId/records', patientRecordsRouter);
 app.use('/api/v1/records', recordsRouter);
 
