@@ -16,6 +16,7 @@ const createUserSchema = Joi.object({
     'any.only': `El rol debe ser uno de: ${ROLES.join(', ')}`,
     'any.required': 'El rol es obligatorio',
   }),
+  full_name: Joi.string().max(150),
   // Datos de staff (obligatorios solo si role === 'dentist', validado en el servicio)
   first_name: Joi.string().max(100),
   last_name: Joi.string().max(100),

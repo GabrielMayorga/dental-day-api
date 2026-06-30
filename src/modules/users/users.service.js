@@ -9,31 +9,32 @@ const listUsers = async () => repo.findAll();
 
 // Crea un usuario. Si el rol es 'dentist', crea también su ficha de staff.
 const createUser = async (data) => {
-  const { email, password, role, first_name, last_name, speciality, phone } = data;
+  const { email, password, role, full_name, first_name, last_name, speciality, phone } = data;
 
-  // Email único
   if (await repo.emailExists(email)) {
     throw new ConflictError('Ya existe un usuario con ese correo');
   }
 
-  // Resolver el rol
   const roleId = await repo.getRoleId(role);
   if (!roleId) throw new BadRequestError(`Rol inválido: ${role}`);
 
   const passwordHash = await hashPassword(password);
 
-  // Si es odontólogo, necesita nombre y se crea user + staff
   if (role === 'dentist') {
     if (!first_name || !last_name) {
       throw new BadRequestError('Un odontólogo requiere nombre y apellido');
     }
+    // El nombre de la cuenta: el full_name dado, o nombre+apellido
+    const fullName = full_name || `${first_name} ${last_name}`;
     return repo.createUserWithStaff({
-      email, passwordHash, roleId, first_name, last_name, speciality, phone,
+      email, passwordHash, roleId, fullName,
+      first_name, last_name, speciality, phone,
     });
   }
 
-  // Otros roles: solo usuario
-  return repo.createUser({ email, passwordHash, roleId });
+  // Otros roles: requieren full_name
+  if (!full_name) throw new BadRequestError('El nombre es obligatorio');
+  return repo.createUser({ email, passwordHash, roleId, fullName: full_name });
 };
 
 const changeRole = async (id, role) => {
