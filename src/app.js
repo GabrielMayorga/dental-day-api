@@ -70,6 +70,7 @@ app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
 app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
 app.use('/api/v1/users', require('./modules/users/users.routes'));
 app.use('/api/v1/reports', require('./modules/reports/reports.routes'));
+app.use('/api/v1/notifications', require('./modules/notifications/notifications.routes'));
 app.use('/api/v1/patients/:patientId/records', patientRecordsRouter);
 app.use('/api/v1/records', recordsRouter);
 
