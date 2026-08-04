@@ -13,6 +13,13 @@ const create = async (req, res) => {
   res.status(201).json({ message: 'Registro clínico creado', data: record });
 };
 
+// GET /api/v1/records/recent
+// Historias clínicas más recientes de toda la clínica.
+const listRecent = async (_req, res) => {
+  const records = await service.listRecent();
+  res.json({ data: records });
+};
+
 // GET /api/v1/records/:id
 const getById = async (req, res) => {
   const record = await service.getById(req.params.id);
@@ -25,4 +32,4 @@ const update = async (req, res) => {
   res.json({ message: 'Registro clínico actualizado', data: record });
 };
 
-module.exports = { listByPatient, create, getById, update };
+module.exports = { listByPatient, create, listRecent, getById, update };

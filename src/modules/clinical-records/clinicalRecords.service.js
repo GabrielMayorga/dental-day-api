@@ -3,6 +3,11 @@ const db = require('../../config/database');
 const repo = require('./clinicalRecords.repository');
 const { NotFoundError } = require('../../shared/errors/app-error');
 
+// Historias recientes de toda la clínica (admin y odontólogos)
+const listRecent = async () => {
+  return repo.findRecent(50);
+};
+
 // Lista los registros de un paciente (valida que el paciente exista)
 const listByPatient = async (patientId) => {
   const patient = await db.query(
@@ -49,4 +54,4 @@ const updateRecord = async (id, fields) => {
   return repo.update(id, fields);
 };
 
-module.exports = { listByPatient, getById, createForPatient, updateRecord };
+module.exports = { listByPatient, getById, createForPatient, updateRecord, listRecent };

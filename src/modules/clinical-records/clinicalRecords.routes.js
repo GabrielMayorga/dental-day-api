@@ -16,9 +16,14 @@ patientRecordsRouter.use(authenticate);
 patientRecordsRouter.get('/',  authorize(...CLINICAL_ROLES), controller.listByPatient);
 patientRecordsRouter.post('/', authorize(...CLINICAL_ROLES), validate(createRecordSchema), controller.create);
 
-// Router suelto: /api/v1/records/:id
+// Router suelto: /api/v1/records
 const recordsRouter = express.Router();
 recordsRouter.use(authenticate);
+
+// IMPORTANTE: /recent debe ir ANTES de /:id, o Express tomaria
+// "recent" como si fuera un identificador.
+recordsRouter.get('/recent', authorize(...CLINICAL_ROLES), controller.listRecent);
+
 recordsRouter.get('/:id',   authorize(...CLINICAL_ROLES), controller.getById);
 recordsRouter.patch('/:id', authorize(...CLINICAL_ROLES), validate(updateRecordSchema), controller.update);
 

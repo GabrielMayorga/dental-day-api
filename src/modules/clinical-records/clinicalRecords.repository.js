@@ -76,4 +76,26 @@ const update = async (id, fields) => {
   return result.rows[0] || null;
 };
 
-module.exports = { findByPatient, findById, create, update };
+// Lista las historias clínicas más recientes de toda la clínica,
+// con datos del paciente y del odontólogo que las registró.
+const findRecent = async (limit = 50) => {
+  const result = await db.query(
+    `SELECT
+       cr.id,
+       cr.chief_complaint,
+       cr.diagnosis,
+       cr.created_at,
+       p.id   AS patient_id,
+       p.first_name || ' ' || p.last_name AS patient_name,
+       s.first_name || ' ' || s.last_name AS staff_name
+     FROM clinical_records cr
+     JOIN patients p ON p.id = cr.patient_id
+     JOIN staff    s ON s.id = cr.staff_id
+     ORDER BY cr.created_at DESC
+     LIMIT $1`,
+    [limit]
+  );
+  return result.rows;
+};
+
+module.exports = { findByPatient, findById, create, update, findRecent };
