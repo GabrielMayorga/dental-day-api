@@ -102,6 +102,34 @@ const getAppointment = async (id) => {
 };
 
 /**
+ * Máquina de estados de una cita.
+ * Define, para cada estado, a qué estados puede transicionar.
+ * Los estados finales (completed, cancelled, no_show) tienen lista
+ * vacía: una vez ahí, la cita no cambia más.
+ *
+ * Esta tabla es la representación en código del diagrama de estados
+ * del diseño del sistema.
+ */
+const TRANSICIONES_VALIDAS = {
+  scheduled:   ['confirmed', 'cancelled', 'no_show'],
+  confirmed:   ['in_progress', 'cancelled', 'no_show'],
+  in_progress: ['completed'],
+  completed:   [],
+  cancelled:   [],
+  no_show:     [],
+};
+
+// Nombres en español para los mensajes de error al usuario
+const NOMBRE_ESTADO = {
+  scheduled:   'Programada',
+  confirmed:   'Confirmada',
+  in_progress: 'En consulta',
+  completed:   'Completada',
+  cancelled:   'Cancelada',
+  no_show:     'No asistió',
+};
+
+/**
  * Cambia el estado de una cita (confirmar, completar, cancelar, etc.).
  */
 const changeStatus = async (id, statusName, cancelledReason) => {
@@ -119,6 +147,35 @@ const changeStatus = async (id, statusName, cancelledReason) => {
   if (status.rows.length === 0) {
     throw new BadRequestError(`Estado inválido: ${statusName}`);
   }
+
+    if (status.rows.length === 0) {
+    throw new BadRequestError(`Estado inválido: ${statusName}`);
+  }
+
+  // ── Regla: la transición debe ser válida según la máquina de estados ──
+  // findById ya trae status_name gracias al JOIN con appointment_statuses.
+  const estadoActual = appointment.status_name;
+  const permitidos = TRANSICIONES_VALIDAS[estadoActual] ?? [];
+
+  if (estadoActual === statusName) {
+    throw new BadRequestError(
+      `La cita ya está en estado "${NOMBRE_ESTADO[statusName]}"`
+    );
+  }
+
+  if (!permitidos.includes(statusName)) {
+    const opciones = permitidos.length
+      ? permitidos.map((e) => NOMBRE_ESTADO[e]).join(', ')
+      : 'ninguno, es un estado final';
+    throw new BadRequestError(
+      `No se puede pasar de "${NOMBRE_ESTADO[estadoActual]}" a ` +
+      `"${NOMBRE_ESTADO[statusName]}". Transiciones permitidas: ${opciones}`
+    );
+  }
+
+  return appointmentsRepository.updateStatus(
+    id, status.rows[0].id, cancelledReason ?? null
+  );
 
   return appointmentsRepository.updateStatus(
     id, status.rows[0].id, cancelledReason ?? null
