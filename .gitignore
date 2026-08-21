@@ -26,3 +26,5 @@ coverage/
 # Build
 dist/
 build/
+.secrets-produccion
+.neon-url

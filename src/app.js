@@ -19,6 +19,13 @@ const { patientRecordsRouter, recordsRouter } = require('./modules/clinical-reco
 
 const app = express();
 
+
+// Render (y cualquier PaaS) pone un proxy delante de la aplicación.
+// Sin esto, express-rate-limit ve la IP del proxy y limita a todos
+// los usuarios como si fueran uno solo. El 1 indica que confiamos
+// en un único salto de proxy, no en toda la cadena.
+app.set('trust proxy', 1);
+
 // ── SEGURIDAD ────────────────────────────
 
 app.use(helmet()); // Agrega cabeceras HTTP de seguridad automáticamente
