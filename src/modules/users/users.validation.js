@@ -21,7 +21,9 @@ const createUserSchema = Joi.object({
   first_name: Joi.string().max(100),
   last_name: Joi.string().max(100),
   speciality: Joi.string().max(150).allow('', null),
-  phone: Joi.string().max(25).allow('', null),
+  phone: Joi.string().max(25).pattern(/^(?=(?:[^\d]*\d){8,})[\d+\-\s()]{8,25}$/).allow('', null).messages({
+  'string.pattern.base': 'El teléfono debe contener al menos 8 dígitos',
+}),
 });
 
 const changeRoleSchema = Joi.object({
