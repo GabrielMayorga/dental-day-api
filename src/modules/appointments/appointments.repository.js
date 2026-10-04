@@ -34,7 +34,7 @@ const findAll = async ({ from, to, staffId } = {}) => {
   const result = await db.query(
     `SELECT
        a.id,
-       a.scheduled_at,
+       to_char(a.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
        a.duration_minutes,
        a.reason,
        a.notes,
@@ -64,7 +64,11 @@ const findAll = async ({ from, to, staffId } = {}) => {
 const findById = async (id) => {
   const result = await db.query(
     `SELECT
-       a.id, a.scheduled_at, a.duration_minutes, a.reason, a.notes,
+       a.id,
+       to_char(a.scheduled_at, 'YYYY-MM-DD"T"HH24:MI:SS') AS scheduled_at,
+       a.duration_minutes,
+       a.reason,
+       a.notes,
        a.cancelled_reason,
        a.patient_id, p.first_name || ' ' || p.last_name AS patient_name,
        a.staff_id,   s.first_name || ' ' || s.last_name AS staff_name,
