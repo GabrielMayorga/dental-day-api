@@ -15,8 +15,9 @@ const getStaffIdForUser = async (userId) => {
   return result.rows[0]?.id || null;
 };
 
-// Construye el dashboard según quién consulta
-const getDashboard = async (user) => {
+// Construye el dashboard según quién consulta.
+// from / to (opcionales) acotan las citas por scheduled_at.
+const getDashboard = async (user, { from = null, to = null } = {}) => {
   // Si es odontólogo, resolvemos su staff_id para filtrar
   let staffId = null;
   let scope = 'global';
@@ -28,9 +29,9 @@ const getDashboard = async (user) => {
   }
 
   const [byStatus, total, today, patients] = await Promise.all([
-    repo.countByStatus(staffId),
-    repo.totalAppointments(staffId),
-    repo.todayAppointments(staffId),
+    repo.countByStatus({ staffId, from, to }),
+    repo.totalAppointments({ staffId, from, to }),
+    repo.todayAppointments({ staffId, from, to }),
     repo.activePatients(),
   ]);
 
@@ -42,7 +43,9 @@ const getDashboard = async (user) => {
     : 0;
 
   // Citas por odontólogo: solo para admin (vista global)
-  const byDentist = user.role === 'admin' ? await repo.countByDentist() : [];
+  const byDentist = user.role === 'admin'
+    ? await repo.countByDentist({ staffId: null, from, to })
+    : [];
 
   return {
     scope,

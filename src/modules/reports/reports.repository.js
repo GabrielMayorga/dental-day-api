@@ -1,43 +1,51 @@
 // src/modules/reports/reports.repository.js
 // ============================================================
 // Consultas de agregación para el panel de indicadores.
-// Cada función acepta un staffId OPCIONAL: si viene, filtra
-// por ese odontólogo (para que cada dentista vea solo lo suyo).
+// Cada función acepta { staffId, from, to }, todos OPCIONALES:
+// - staffId: filtra por ese odontólogo (cada dentista ve lo suyo)
+// - from / to: rango sobre scheduled_at, en hora local de la
+//   clínica (TIMESTAMP sin zona). Cualquiera de los dos puede faltar.
 // ============================================================
 const db = require('../../config/database');
 
 // Citas agrupadas por estado (con su color para el gráfico)
-const countByStatus = async (staffId = null) => {
+const countByStatus = async ({ staffId = null, from = null, to = null } = {}) => {
   const result = await db.query(
     `SELECT s.name, s.color_hex, COUNT(a.id)::int AS total
      FROM appointment_statuses s
      LEFT JOIN appointments a
        ON a.status_id = s.id
        AND ($1::uuid IS NULL OR a.staff_id = $1)
+       AND ($2::timestamp IS NULL OR a.scheduled_at >= $2)
+       AND ($3::timestamp IS NULL OR a.scheduled_at <= $3)
      GROUP BY s.name, s.color_hex
      ORDER BY s.name`,
-    [staffId]
+    [staffId, from, to]
   );
   return result.rows;
 };
 
 // Total de citas (opcionalmente por odontólogo)
-const totalAppointments = async (staffId = null) => {
+const totalAppointments = async ({ staffId = null, from = null, to = null } = {}) => {
   const result = await db.query(
     `SELECT COUNT(*)::int AS total FROM appointments
-     WHERE ($1::uuid IS NULL OR staff_id = $1)`,
-    [staffId]
+     WHERE ($1::uuid IS NULL OR staff_id = $1)
+       AND ($2::timestamp IS NULL OR scheduled_at >= $2)
+       AND ($3::timestamp IS NULL OR scheduled_at <= $3)`,
+    [staffId, from, to]
   );
   return result.rows[0].total;
 };
 
-// Citas de hoy
-const todayAppointments = async (staffId = null) => {
+// Citas de hoy (si hoy cae fuera del rango, el resultado es 0)
+const todayAppointments = async ({ staffId = null, from = null, to = null } = {}) => {
   const result = await db.query(
     `SELECT COUNT(*)::int AS total FROM appointments
      WHERE scheduled_at::date = CURRENT_DATE
-       AND ($1::uuid IS NULL OR staff_id = $1)`,
-    [staffId]
+       AND ($1::uuid IS NULL OR staff_id = $1)
+       AND ($2::timestamp IS NULL OR scheduled_at >= $2)
+       AND ($3::timestamp IS NULL OR scheduled_at <= $3)`,
+    [staffId, from, to]
   );
   return result.rows[0].total;
 };
@@ -51,17 +59,22 @@ const activePatients = async () => {
 };
 
 // Citas por odontólogo (solo tiene sentido en vista global/admin)
-const countByDentist = async () => {
+const countByDentist = async ({ staffId = null, from = null, to = null } = {}) => {
   const result = await db.query(
     `SELECT s.first_name || ' ' || s.last_name AS dentist,
             COUNT(a.id)::int AS total
      FROM staff s
-     LEFT JOIN appointments a ON a.staff_id = s.id
+     LEFT JOIN appointments a
+       ON a.staff_id = s.id
+       AND ($2::timestamp IS NULL OR a.scheduled_at >= $2)
+       AND ($3::timestamp IS NULL OR a.scheduled_at <= $3)
      JOIN users u ON u.id = s.user_id
      JOIN roles r ON r.id = u.role_id
      WHERE r.name = 'dentist'
+       AND ($1::uuid IS NULL OR s.id = $1)
      GROUP BY dentist
-     ORDER BY total DESC`
+     ORDER BY total DESC`,
+    [staffId, from, to]
   );
   return result.rows;
 };
