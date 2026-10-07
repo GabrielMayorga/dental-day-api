@@ -14,19 +14,6 @@ const getStaffIdForUser = async (userId) => {
   return result.rows[0]?.id || null;
 };
 
-// Determina el grupo (hoy / mañana / esta semana) de una fecha
-const groupOf = (scheduledAt) => {
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const fecha = new Date(scheduledAt);
-  fecha.setHours(0, 0, 0, 0);
-
-  const diffDias = Math.round((fecha - hoy) / (1000 * 60 * 60 * 24));
-  if (diffDias <= 0) return 'hoy';
-  if (diffDias === 1) return 'mañana';
-  return 'semana';
-};
-
 const getUpcoming = async (user) => {
   // Si es odontólogo, filtra solo sus citas
   let staffId = null;
@@ -34,14 +21,13 @@ const getUpcoming = async (user) => {
     staffId = await getStaffIdForUser(user.id);
   }
 
+  // Cada cita ya trae su grupo de cercanía, calculado en SQL
+  // con la fecha de la clínica (ver notifications.repository.js)
   const citas = await repo.findUpcoming({ days: 7, staffId });
 
-  // Agrega a cada cita su grupo de cercanía
-  const conGrupo = citas.map((c) => ({ ...c, group: groupOf(c.scheduled_at) }));
-
   return {
-    total: conGrupo.length,
-    items: conGrupo,
+    total: citas.length,
+    items: citas,
   };
 };
 

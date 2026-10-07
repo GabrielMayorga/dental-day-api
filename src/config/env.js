@@ -36,6 +36,20 @@ const envSchema = Joi.object({
   BCRYPT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
 
   CORS_ORIGIN: Joi.string().default('http://localhost:5173'),
+
+  // Zona horaria de la clínica. Render y Neon corren en UTC: todo
+  // cálculo de "hoy" o "ahora" debe hacerse en esta zona, no en la
+  // del servidor. Nombre IANA (ej: America/Managua).
+  CLINIC_TIMEZONE: Joi.string()
+    .custom((value, helpers) => {
+      try {
+        new Intl.DateTimeFormat('en-US', { timeZone: value });
+        return value;
+      } catch {
+        return helpers.error('any.invalid');
+      }
+    })
+    .default('America/Managua'),
 })
   .unknown(true) // Ignora otras variables del sistema operativo que no nos interesan
   .required();
@@ -64,6 +78,7 @@ module.exports = {
   },
   bcryptRounds: env.BCRYPT_ROUNDS,
   corsOrigin: env.CORS_ORIGIN,
+  clinicTimezone: env.CLINIC_TIMEZONE,
   isDev: env.NODE_ENV === 'development',
   isProd: env.NODE_ENV === 'production',
 };

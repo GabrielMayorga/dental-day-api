@@ -31,7 +31,7 @@ const getDashboard = async (user, { from = null, to = null } = {}) => {
   const [byStatus, total, today, patients] = await Promise.all([
     repo.countByStatus({ staffId, from, to }),
     repo.totalAppointments({ staffId, from, to }),
-    repo.todayAppointments({ staffId, from, to }),
+    repo.todayAppointments({ staffId }),
     repo.activePatients(),
   ]);
 

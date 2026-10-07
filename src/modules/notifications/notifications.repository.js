@@ -4,12 +4,21 @@
 // pendientes (programadas o confirmadas). No usa tabla nueva:
 // las notificaciones se derivan de las citas reales.
 // Acepta staffId OPCIONAL para que un odontólogo vea solo las suyas.
+//
+// "Hoy" es la fecha de la CLÍNICA, no la del servidor: la base corre
+// en UTC y CURRENT_DATE ya es mañana desde las 18:00 de Managua.
+// El grupo (hoy / mañana / semana) también se calcula aquí, contra
+// esa misma fecha, para que no dependa del reloj de Node.
 // ============================================================
 const db = require('../../config/database');
+const { clinicTimezone } = require('../../config/env');
 
 const findUpcoming = async ({ days = 7, staffId = null }) => {
   const result = await db.query(
-    `SELECT
+    `WITH clinica AS (
+       SELECT (now() AT TIME ZONE $3)::date AS hoy
+     )
+     SELECT
        a.id,
        a.scheduled_at,
        a.duration_minutes,
@@ -18,17 +27,23 @@ const findUpcoming = async ({ days = 7, staffId = null }) => {
        p.phone AS patient_phone,
        s.first_name || ' ' || s.last_name AS staff_name,
        st.name  AS status_name,
-       st.color_hex AS status_color
+       st.color_hex AS status_color,
+       CASE
+         WHEN a.scheduled_at::date <= c.hoy     THEN 'hoy'
+         WHEN a.scheduled_at::date  = c.hoy + 1 THEN 'mañana'
+         ELSE 'semana'
+       END AS "group"
      FROM appointments a
+     CROSS JOIN clinica c
      JOIN patients p            ON p.id = a.patient_id
      JOIN staff s               ON s.id = a.staff_id
      JOIN appointment_statuses st ON st.id = a.status_id
-     WHERE a.scheduled_at::date >= CURRENT_DATE
-       AND a.scheduled_at::date <= CURRENT_DATE + ($1::int - 1)
+     WHERE a.scheduled_at::date >= c.hoy
+       AND a.scheduled_at::date <= c.hoy + ($1::int - 1)
        AND st.name IN ('scheduled', 'confirmed')
        AND ($2::uuid IS NULL OR a.staff_id = $2)
      ORDER BY a.scheduled_at ASC`,
-    [days, staffId]
+    [days, staffId, clinicTimezone]
   );
   return result.rows;
 };

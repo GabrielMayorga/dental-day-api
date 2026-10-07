@@ -11,7 +11,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
-const { port, corsOrigin, isDev } = require('./config/env');
+const { port, corsOrigin, isDev, clinicTimezone } = require('./config/env');
 const db = require('./config/database');
 const logger = require('./config/logger');
 
@@ -66,6 +66,8 @@ app.get('/health', async (_req, res) => {
     service: 'Dental Day API',
     time: dbInfo.time,
     db: dbInfo.pg_version.split(' ').slice(0, 2).join(' '),
+    clinicNow: dbInfo.clinic_now,
+    clinicTz: clinicTimezone,
   });
 });
 
