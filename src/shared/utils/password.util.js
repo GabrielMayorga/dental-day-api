@@ -4,6 +4,7 @@
 // Responsabilidad única: todo lo relacionado a contraseñas
 // vive aquí, aislado del resto de la lógica.
 // ============================================================
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { bcryptRounds } = require('../../config/env');
 
@@ -33,4 +34,25 @@ const comparePassword = async (plainPassword, hashedPassword) => {
   return bcrypt.compare(plainPassword, hashedPassword);
 };
 
-module.exports = { hashPassword, comparePassword };
+// Alfabeto de las contraseñas temporales: sin caracteres que se
+// confunden al dictarlos o copiarlos a mano (0/O, 1/l/I).
+const TEMP_PASSWORD_ALPHABET =
+  'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+
+/**
+ * Genera una contraseña temporal aleatoria (para restablecimientos).
+ * Usa crypto.randomInt, que es criptográficamente seguro y sin sesgo
+ * de módulo (Math.random NO sirve para esto).
+ *
+ * @param {number} [length=12]
+ * @returns {string} La contraseña en texto plano — NUNCA guardarla ni loguearla
+ */
+const generateTemporaryPassword = (length = 12) => {
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += TEMP_PASSWORD_ALPHABET[crypto.randomInt(TEMP_PASSWORD_ALPHABET.length)];
+  }
+  return password;
+};
+
+module.exports = { hashPassword, comparePassword, generateTemporaryPassword };

@@ -14,10 +14,13 @@ class AppError extends Error {
   /**
    * @param {string} message    - Mensaje legible para el usuario
    * @param {number} statusCode - Código HTTP (400, 401, 404...)
+   * @param {string} [code]     - Código estable para que el frontend
+   *                              distinga casos (ej: SESSION_REVOKED)
    */
-  constructor(message, statusCode) {
+  constructor(message, statusCode, code) {
     super(message);              // Llama al constructor de Error con el mensaje
     this.statusCode = statusCode;
+    if (code) this.code = code;
     this.isOperational = true;   // Marca: es un error "esperado", no un bug
     this.name = this.constructor.name;
 
@@ -30,36 +33,36 @@ class AppError extends Error {
 
 /** 400 — El cliente envió datos inválidos o mal formados */
 class BadRequestError extends AppError {
-  constructor(message = 'Solicitud inválida') {
-    super(message, 400);
+  constructor(message = 'Solicitud inválida', code) {
+    super(message, 400, code);
   }
 }
 
 /** 401 — No autenticado: falta el token o es inválido */
 class UnauthorizedError extends AppError {
-  constructor(message = 'No autenticado') {
-    super(message, 401);
+  constructor(message = 'No autenticado', code) {
+    super(message, 401, code);
   }
 }
 
 /** 403 — Autenticado, pero sin permiso para esta acción */
 class ForbiddenError extends AppError {
-  constructor(message = 'No tienes permiso para realizar esta acción') {
-    super(message, 403);
+  constructor(message = 'No tienes permiso para realizar esta acción', code) {
+    super(message, 403, code);
   }
 }
 
 /** 404 — El recurso solicitado no existe */
 class NotFoundError extends AppError {
-  constructor(message = 'Recurso no encontrado') {
-    super(message, 404);
+  constructor(message = 'Recurso no encontrado', code) {
+    super(message, 404, code);
   }
 }
 
 /** 409 — Conflicto con el estado actual (ej: email duplicado, cita solapada) */
 class ConflictError extends AppError {
-  constructor(message = 'Conflicto con el estado actual del recurso') {
-    super(message, 409);
+  constructor(message = 'Conflicto con el estado actual del recurso', code) {
+    super(message, 409, code);
   }
 }
 

@@ -22,4 +22,14 @@ const changeStatus = async (req, res) => {
   res.json({ message: 'Estado actualizado', data: user });
 };
 
-module.exports = { list, create, changeRole, changeStatus };
+const resetPassword = async (req, res) => {
+  const result = await service.resetPassword(req.params.id, req.user.id);
+  // La respuesta lleva una contraseña: que ningún proxy ni navegador la guarde
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    message: 'Contraseña restablecida. Entrégala al usuario: no se volverá a mostrar.',
+    data: result,
+  });
+};
+
+module.exports = { list, create, changeRole, changeStatus, resetPassword };

@@ -6,6 +6,9 @@ const validate = (schema) => {
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
+      // Los esquemas pueden referirse al usuario autenticado como $user
+      // (ej: la nueva contraseña no puede ser su correo)
+      context: { user: req.user },
     });
 
     if (error) {

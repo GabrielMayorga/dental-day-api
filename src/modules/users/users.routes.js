@@ -18,5 +18,6 @@ router.get('/', controller.list);
 router.post('/', validate(createUserSchema), controller.create);
 router.patch('/:id/role', validate(changeRoleSchema), controller.changeRole);
 router.patch('/:id/status', validate(changeStatusSchema), controller.changeStatus);
+router.post('/:id/reset-password', controller.resetPassword);
 
 module.exports = router;

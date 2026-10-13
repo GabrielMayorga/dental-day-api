@@ -99,6 +99,9 @@ app.use((err, req, res, _next) => {
 
   res.status(statusCode).json({
     error: err.message || 'Error interno del servidor',
+    // Solo nuestros AppError traen code (los errores de pg también
+    // tienen err.code, pero no deben llegar al cliente)
+    ...(err.isOperational && err.code && { code: err.code }),
     ...(isDev && statusCode >= 500 && { stack: err.stack }),
   });
 });

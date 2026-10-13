@@ -1,6 +1,6 @@
 // src/modules/users/users.service.js
 const repo = require('./users.repository');
-const { hashPassword } = require('../../shared/utils/password.util');
+const { hashPassword, generateTemporaryPassword } = require('../../shared/utils/password.util');
 const {
   BadRequestError, ConflictError, NotFoundError,
 } = require('../../shared/errors/app-error');
@@ -59,4 +59,26 @@ const changeStatus = async (id, isActive, requesterId) => {
   return repo.updateStatus(id, isActive);
 };
 
-module.exports = { listUsers, createUser, changeRole, changeStatus };
+// Restablece la contraseña de otro usuario. El servidor genera la
+// temporal (el admin no la elige, así no hay temporales débiles) y
+// la devuelve UNA sola vez: no se guarda en texto plano ni se loguea.
+const resetPassword = async (id, requesterId) => {
+  if (id === requesterId) {
+    throw new BadRequestError('Usa Cambiar contraseña en tu perfil');
+  }
+
+  const user = await repo.findById(id);
+  if (!user) throw new NotFoundError('El usuario no existe');
+
+  if (!user.is_active) {
+    throw new BadRequestError('No se puede restablecer la contraseña de un usuario inactivo');
+  }
+
+  const temporaryPassword = generateTemporaryPassword(12);
+  const passwordHash = await hashPassword(temporaryPassword);
+  await repo.resetPassword(id, passwordHash);
+
+  return { temporary_password: temporaryPassword };
+};
+
+module.exports = { listUsers, createUser, changeRole, changeStatus, resetPassword };

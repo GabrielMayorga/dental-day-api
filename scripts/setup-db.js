@@ -13,6 +13,12 @@ const { Pool } = require('pg');
 const steps = [
   { label: 'Migración 001 — Esquema',     file: '../migrations/001_initial_schema.sql' },
   { label: 'Seed 001 — Datos iniciales',  file: '../seeds/001_seed_data.sql' },
+  // Las migraciones posteriores van DESPUÉS del seed: la 003 rellena
+  // full_name de los usuarios que ya existan. Toda migración nueva
+  // debe agregarse aquí, o se olvidará al desplegar.
+  { label: 'Migración 002 — Borrado lógico de pacientes', file: '../migrations/002_patients_soft_delete.sql' },
+  { label: 'Migración 003 — Nombre completo de usuarios', file: '../migrations/003_users_full_name.sql' },
+  { label: 'Migración 005 — Gestión de contraseñas',      file: '../migrations/005_password_management.sql' },
 ];
 
 async function setupDatabase() {

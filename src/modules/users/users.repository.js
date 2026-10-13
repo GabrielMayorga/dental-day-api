@@ -98,7 +98,23 @@ const updateStatus = async (id, isActive) => {
   return result.rows[0] || null;
 };
 
+// Restablecimiento por el admin: obliga a cambiarla en el próximo
+// inicio de sesión e incrementa token_version (cierra todas sus sesiones)
+const resetPassword = async (id, passwordHash) => {
+  const result = await db.query(
+    `UPDATE users
+     SET password_hash = $1,
+         must_change_password = TRUE,
+         token_version = token_version + 1
+     WHERE id = $2
+     RETURNING id`,
+    [passwordHash, id]
+  );
+  return result.rows[0] || null;
+};
+
 module.exports = {
   findAll, findById, emailExists, getRoleId,
   createUser, createUserWithStaff, updateRole, updateStatus,
+  resetPassword,
 };

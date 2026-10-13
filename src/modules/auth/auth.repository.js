@@ -16,6 +16,8 @@ const findByEmail = async (email) => {
        u.email,
        u.password_hash,
        u.is_active,
+       u.must_change_password,
+       u.token_version,
        u.role_id,
        r.name AS role_name
      FROM users u
@@ -36,6 +38,8 @@ const findById = async (id) => {
        u.id,
        u.email,
        u.is_active,
+       u.must_change_password,
+       u.token_version,
        u.role_id,
        r.name AS role_name
      FROM users u
@@ -57,8 +61,42 @@ const updateLastLogin = async (id) => {
   );
 };
 
+/**
+ * Devuelve SOLO el hash de la contraseña de un usuario.
+ * Separado de findById para que el hash no viaje en cada petición.
+ */
+const findPasswordHash = async (id) => {
+  const result = await db.query(
+    `SELECT password_hash FROM users WHERE id = $1`,
+    [id]
+  );
+
+  return result.rows[0]?.password_hash ?? null;
+};
+
+/**
+ * Guarda la nueva contraseña del propio usuario: quita la marca de
+ * cambio obligatorio e incrementa token_version (revoca las demás
+ * sesiones). Devuelve la versión nueva para firmar los tokens.
+ */
+const updateOwnPassword = async (id, passwordHash) => {
+  const result = await db.query(
+    `UPDATE users
+     SET password_hash = $1,
+         must_change_password = FALSE,
+         token_version = token_version + 1
+     WHERE id = $2
+     RETURNING token_version, must_change_password`,
+    [passwordHash, id]
+  );
+
+  return result.rows[0] || null;
+};
+
 module.exports = {
   findByEmail,
   findById,
   updateLastLogin,
+  findPasswordHash,
+  updateOwnPassword,
 };
