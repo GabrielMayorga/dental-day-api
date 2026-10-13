@@ -1,8 +1,10 @@
 // scripts/create-dayra.js
 // ============================================================
 // Crea la odontóloga Dayra González (user + perfil en staff).
-// Uso: node scripts/create-dayra.js  (con DATABASE_URL exportada)
+// Uso: node scripts/create-dayra.js
 // ============================================================
+require('dotenv').config();
+
 const db = require('../src/config/database');
 const { hashPassword } = require('../src/shared/utils/password.util');
 

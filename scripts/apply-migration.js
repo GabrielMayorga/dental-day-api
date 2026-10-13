@@ -2,7 +2,11 @@
 // ============================================================
 // Aplica un archivo SQL a la base de datos.
 // Uso: DATABASE_URL="..." NODE_ENV=production node scripts/apply-migration.js migrations/002_xxx.sql
+// Las variables exportadas en la terminal tienen prioridad sobre .env
+// (dotenv no las sobrescribe); sin ellas, se usa la base del .env.
 // ============================================================
+require('dotenv').config();
+
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
