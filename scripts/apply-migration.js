@@ -1,3 +1,4 @@
+require('dotenv').config();
 // scripts/apply-migration.js
 // ============================================================
 // Aplica un archivo SQL a la base de datos.

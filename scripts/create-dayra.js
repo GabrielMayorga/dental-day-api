@@ -1,3 +1,4 @@
+require('dotenv').config();
 // scripts/create-dayra.js
 // ============================================================
 // Crea la odontóloga Dayra González (user + perfil en staff).
