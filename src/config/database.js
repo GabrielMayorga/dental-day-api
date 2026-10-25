@@ -30,7 +30,11 @@ const pool = new Pool({
 
   max: 10,                       // Máximo de conexiones simultáneas
   idleTimeoutMillis: 30_000,     // Cierra una conexión si está inactiva 30s
-  connectionTimeoutMillis: 5_000, // Si no logra conectar en 5s, lanza error
+  // Si no logra conectar en 10s, lanza error. Neon (plan gratuito)
+  // suspende la base por inactividad y tarda unos segundos en
+  // despertar: con menos margen, las primeras peticiones fallan
+  // con 503 en lugar de esperar.
+  connectionTimeoutMillis: 10_000,
 });
 
 // Si una conexión falla en segundo plano, lo registramos

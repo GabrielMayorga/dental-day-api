@@ -56,6 +56,11 @@ const perUserLimiter = rateLimit({
 // ── Login ────────────────────────────────
 // Solo cuentan los fallos (skipSuccessfulRequests). La respuesta 429
 // es la misma exista o no el correo.
+//
+// "Fallo" es solo un 401 (credenciales incorrectas). Por defecto
+// express-rate-limit cuenta cualquier status >= 400: un 5xx por una
+// falla de la base (p. ej. Neon despertando) consumiría intentos y
+// terminaría bloqueando a usuarios legítimos que no se equivocaron.
 const loginEmail = (req) => {
   const email = req.body && req.body.email;
   return typeof email === 'string' && email.trim() !== ''
@@ -69,6 +74,7 @@ const loginIpEmailLimiter = rateLimit({
   windowMs: FIFTEEN_MINUTES,
   limit: limits.loginMaxPerIpEmail,
   skipSuccessfulRequests: true,
+  requestWasSuccessful: (req, res) => res.statusCode !== 401,
   message: TOO_MANY_LOGINS,
   keyGenerator: (req) => {
     const ip = ipKeyGenerator(req.ip);
@@ -83,6 +89,7 @@ const loginEmailLimiter = rateLimit({
   windowMs: ONE_HOUR,
   limit: limits.loginMaxPerEmail,
   skipSuccessfulRequests: true,
+  requestWasSuccessful: (req, res) => res.statusCode !== 401,
   message: TOO_MANY_LOGINS,
   keyGenerator: (req) => loginEmail(req) || ipKeyGenerator(req.ip),
 });
