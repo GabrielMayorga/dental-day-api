@@ -37,9 +37,25 @@ const createUser = async (data) => {
   return repo.createUser({ email, passwordHash, roleId, fullName: full_name });
 };
 
-const changeRole = async (id, role) => {
+// Rechaza el cambio si el usuario es el último admin activo
+const ensureNotLastActiveAdmin = async (user) => {
+  if (user.role_name !== 'admin' || !user.is_active) return;
+  if (await repo.countActiveAdmins() <= 1) {
+    throw new BadRequestError('Debe quedar al menos un administrador activo');
+  }
+};
+
+// Cambia el rol. Un admin no puede cambiar el suyo, y nunca se
+// degrada al último administrador activo.
+const changeRole = async (id, role, requesterId) => {
   const user = await repo.findById(id);
   if (!user) throw new NotFoundError('El usuario no existe');
+
+  if (id === requesterId) {
+    throw new BadRequestError('No puedes cambiar tu propio rol');
+  }
+
+  if (role !== 'admin') await ensureNotLastActiveAdmin(user);
 
   const roleId = await repo.getRoleId(role);
   if (!roleId) throw new BadRequestError(`Rol inválido: ${role}`);
@@ -47,7 +63,8 @@ const changeRole = async (id, role) => {
   return repo.updateRole(id, roleId);
 };
 
-// Activa/desactiva. Un admin no puede desactivarse a sí mismo.
+// Activa/desactiva. Un admin no puede desactivarse a sí mismo,
+// y nunca se desactiva al último administrador activo.
 const changeStatus = async (id, isActive, requesterId) => {
   const user = await repo.findById(id);
   if (!user) throw new NotFoundError('El usuario no existe');
@@ -55,6 +72,8 @@ const changeStatus = async (id, isActive, requesterId) => {
   if (id === requesterId && isActive === false) {
     throw new BadRequestError('No puedes desactivar tu propia cuenta');
   }
+
+  if (isActive === false) await ensureNotLastActiveAdmin(user);
 
   return repo.updateStatus(id, isActive);
 };

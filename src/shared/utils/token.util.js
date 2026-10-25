@@ -15,6 +15,7 @@ const { jwt: jwtConfig } = require('../../config/env');
  */
 const generateAccessToken = (payload) => {
   return jwt.sign(payload, jwtConfig.secret, {
+    algorithm: 'HS256',
     expiresIn: jwtConfig.expiresIn,   // ej: '15m'
   });
 };
@@ -29,6 +30,7 @@ const generateAccessToken = (payload) => {
  */
 const generateRefreshToken = (payload) => {
   return jwt.sign(payload, jwtConfig.refreshSecret, {
+    algorithm: 'HS256',
     expiresIn: jwtConfig.refreshExpiresIn,   // ej: '7d'
   });
 };
@@ -42,7 +44,7 @@ const generateRefreshToken = (payload) => {
  * @returns {object} El payload decodificado, ej: { id, role, iat, exp }
  */
 const verifyAccessToken = (token) => {
-  return jwt.verify(token, jwtConfig.secret);
+  return jwt.verify(token, jwtConfig.secret, { algorithms: ['HS256'] });
 };
 
 /**
@@ -52,7 +54,7 @@ const verifyAccessToken = (token) => {
  * @returns {object} El payload decodificado
  */
 const verifyRefreshToken = (token) => {
-  return jwt.verify(token, jwtConfig.refreshSecret);
+  return jwt.verify(token, jwtConfig.refreshSecret, { algorithms: ['HS256'] });
 };
 
 module.exports = {

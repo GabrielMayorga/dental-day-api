@@ -3,6 +3,7 @@
 const express = require('express');
 const controller = require('./users.controller');
 const validate = require('../../middlewares/validate.middleware');
+const validateParams = require('../../middlewares/validate-params.middleware');
 const authenticate = require('../../middlewares/auth.middleware');
 const authorize = require('../../middlewares/rbac.middleware');
 const {
@@ -16,7 +17,7 @@ router.use(authorize('admin'));  // todo el módulo es solo para admin
 
 router.get('/', controller.list);
 router.post('/', validate(createUserSchema), controller.create);
-router.patch('/:id/role', validate(changeRoleSchema), controller.changeRole);
-router.patch('/:id/status', validate(changeStatusSchema), controller.changeStatus);
+router.patch('/:id/role', validateParams('id'), validate(changeRoleSchema), controller.changeRole);
+router.patch('/:id/status', validateParams('id'), validate(changeStatusSchema), controller.changeStatus);
 
 module.exports = router;

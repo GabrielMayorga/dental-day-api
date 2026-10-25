@@ -35,7 +35,13 @@ const envSchema = Joi.object({
 
   BCRYPT_ROUNDS: Joi.number().integer().min(10).max(15).default(12),
 
-  CORS_ORIGIN: Joi.string().default('http://localhost:5173'),
+  // En producción es obligatorio: un valor por defecto aquí dejaría
+  // la API configurada para un origen que no es el del frontend real.
+  CORS_ORIGIN: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.required(),
+    otherwise: Joi.optional().default('http://localhost:5173'),
+  }),
 
   // Zona horaria de la clínica. Render y Neon corren en UTC: todo
   // cálculo de "hoy" o "ahora" debe hacerse en esta zona, no en la

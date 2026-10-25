@@ -33,7 +33,7 @@ app.use(helmet()); // Agrega cabeceras HTTP de seguridad automáticamente
 app.use(cors({
   origin: corsOrigin,           // Solo tu frontend puede llamar a esta API
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  credentials: true,
+  credentials: false,           // Usamos Bearer, no cookies: no hace falta enviar credenciales
 }));
 
 // Límite global: máx. 100 peticiones por IP cada 15 minutos
@@ -45,7 +45,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // ── PARSEO DE PETICIONES ─────────────────
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Log de cada petición (solo mientras programas)
@@ -58,17 +58,21 @@ if (isDev) {
 
 // ── RUTAS ─────────────────────────────────
 
-// Ruta de salud: para confirmar que el servidor y la BD están vivos
+// Ruta de salud: para confirmar que el servidor y la BD están vivos.
+// Es pública: no expone versiones ni la hora del servidor. clinicNow
+// se mantiene porque lo usa scripts/check-dates.js.
 app.get('/health', async (_req, res) => {
-  const dbInfo = await db.healthCheck();
-  res.json({
-    status: 'ok',
-    service: 'Dental Day API',
-    time: dbInfo.time,
-    db: dbInfo.pg_version.split(' ').slice(0, 2).join(' '),
-    clinicNow: dbInfo.clinic_now,
-    clinicTz: clinicTimezone,
-  });
+  try {
+    const dbInfo = await db.healthCheck();
+    res.json({
+      status: 'ok',
+      clinicNow: dbInfo.clinic_now,
+      clinicTz: clinicTimezone,
+    });
+  } catch (err) {
+    logger.error(`Health check falló — ${err.message}`, { stack: err.stack });
+    res.status(503).json({ status: 'error' });
+  }
 });
 
 app.use('/api/v1/appointments', require('./modules/appointments/appointments.routes'));
@@ -78,7 +82,10 @@ app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
 app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
 app.use('/api/v1/users', require('./modules/users/users.routes'));
-app.use('/api/v1/invoices', require('./modules/invoices/invoices.routes'));
+// Facturación desmontada: el módulo está fuera del alcance de los
+// objetivos del proyecto y se desactiva para reducir la superficie de
+// ataque. El código sigue en src/modules/invoices/.
+// app.use('/api/v1/invoices', require('./modules/invoices/invoices.routes'));
 app.use('/api/v1/reports', require('./modules/reports/reports.routes'));
 app.use('/api/v1/notifications', require('./modules/notifications/notifications.routes'));
 app.use('/api/v1/patients/:patientId/records', patientRecordsRouter);
@@ -97,9 +104,14 @@ app.use((err, req, res, _next) => {
     logger.warn(`${statusCode} — ${err.message}`);
   }
 
+  // Un error inesperado (bug, fallo de la BD) nunca expone su mensaje:
+  // puede revelar tablas, columnas o valores. El detalle queda solo en el log.
+  if (statusCode >= 500 && !err.isOperational) {
+    return res.status(statusCode).json({ error: 'Error interno del servidor' });
+  }
+
   res.status(statusCode).json({
     error: err.message || 'Error interno del servidor',
-    ...(isDev && statusCode >= 500 && { stack: err.stack }),
   });
 });
 
