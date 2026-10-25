@@ -80,6 +80,7 @@ app.use('/api/v1/auth',     require('./modules/auth/auth.routes'));
 app.use('/api/v1/patients', require('./modules/patients/patients.routes'));
 app.use('/api/v1/staff', require('./modules/staff/staff.routes'));
 app.use('/api/v1/users', require('./modules/users/users.routes'));
+app.use('/api/v1/audit', require('./modules/audit/audit.routes'));
 // Facturación desmontada: el módulo está fuera del alcance de los
 // objetivos del proyecto y se desactiva para reducir la superficie de
 // ataque. El código sigue en src/modules/invoices/.

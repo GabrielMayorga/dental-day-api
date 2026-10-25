@@ -29,6 +29,7 @@ const authenticate = async (req, _res, next) => {
     id: user.id,
     email: user.email,
     role: user.role_name,
+    staffId: user.staff_id, // null si el usuario no tiene ficha de personal
   };
 
   next();

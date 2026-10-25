@@ -7,19 +7,19 @@ const list = async (_req, res) => {
 };
 
 const create = async (req, res) => {
-  const user = await service.createUser(req.body);
+  const user = await service.createUser(req.body, req);
   res.status(201).json({ message: 'Usuario creado', data: user });
 };
 
 const changeRole = async (req, res) => {
-  // req.user.id es quien hace la petición (para la auto-protección)
-  const user = await service.changeRole(req.params.id, req.body.role, req.user.id);
+  // req.user.id es quien hace la petición (auto-protección y auditoría)
+  const user = await service.changeRole(req.params.id, req.body.role, req);
   res.json({ message: 'Rol actualizado', data: user });
 };
 
 const changeStatus = async (req, res) => {
-  // req.user.id es quien hace la petición (para la auto-protección)
-  const user = await service.changeStatus(req.params.id, req.body.is_active, req.user.id);
+  // req.user.id es quien hace la petición (auto-protección y auditoría)
+  const user = await service.changeStatus(req.params.id, req.body.is_active, req);
   res.json({ message: 'Estado actualizado', data: user });
 };
 
