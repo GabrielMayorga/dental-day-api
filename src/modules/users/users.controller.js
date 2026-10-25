@@ -12,7 +12,8 @@ const create = async (req, res) => {
 };
 
 const changeRole = async (req, res) => {
-  const user = await service.changeRole(req.params.id, req.body.role);
+  // req.user.id es quien hace la petición (para la auto-protección)
+  const user = await service.changeRole(req.params.id, req.body.role, req.user.id);
   res.json({ message: 'Rol actualizado', data: user });
 };
 

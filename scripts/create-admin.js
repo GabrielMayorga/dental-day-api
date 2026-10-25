@@ -1,15 +1,20 @@
 // scripts/create-admin.js
 // ============================================================
-// Crea (o actualiza) el usuario administrador inicial.
-// Uso: node scripts/create-admin.js
+// Crea el usuario administrador inicial. Si ya existe, no lo toca.
+// Uso: ADMIN_PASSWORD=... node scripts/create-admin.js
 // ============================================================
 require('dotenv').config();
 
+const ADMIN_EMAIL = 'admin@clinicadentalday.com';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+if (!ADMIN_PASSWORD) {
+  console.error('❌ Falta ADMIN_PASSWORD. Uso: ADMIN_PASSWORD=... node scripts/create-admin.js');
+  process.exit(1);
+}
+
 const db = require('../src/config/database');
 const { hashPassword } = require('../src/shared/utils/password.util');
-
-const ADMIN_EMAIL = 'admin@clinicadentalday.com';
-const ADMIN_PASSWORD = 'Admin2024!';
 
 async function createAdmin() {
   console.log('\n🦷 Creando usuario administrador...\n');
@@ -27,22 +32,25 @@ async function createAdmin() {
     const adminRoleId = roleResult.rows[0].id;
     const passwordHash = await hashPassword(ADMIN_PASSWORD);
 
+    // DO NOTHING: un script de creación nunca sobrescribe la
+    // contraseña de un usuario existente.
     const result = await db.query(
       `INSERT INTO users (email, password_hash, role_id)
        VALUES ($1, $2, $3)
-       ON CONFLICT (email)
-       DO UPDATE SET password_hash = EXCLUDED.password_hash
+       ON CONFLICT (email) DO NOTHING
        RETURNING id, email`,
       [ADMIN_EMAIL, passwordHash, adminRoleId]
     );
 
-    const admin = result.rows[0];
+    if (result.rows.length === 0) {
+      console.log(`ℹ️  Ya existe un usuario con el correo ${ADMIN_EMAIL}; no se modificó.\n`);
+      return;
+    }
 
-    console.log('✅ Usuario administrador listo:');
-    console.log('   Email:      ', admin.email);
-    console.log('   Contraseña: ', ADMIN_PASSWORD);
-    console.log('   ID:         ', admin.id);
-    console.log('\n⚠️  Cambia esta contraseña después del primer login.\n');
+    const admin = result.rows[0];
+    console.log('✅ Usuario administrador creado:');
+    console.log('   Email:', admin.email);
+    console.log('   ID:   ', admin.id, '\n');
 
   } catch (err) {
     console.error('❌ Error:', err.message);

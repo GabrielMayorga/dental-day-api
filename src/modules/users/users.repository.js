@@ -82,6 +82,16 @@ const createUserWithStaff = async ({
   }
 };
 
+// Cuántos administradores activos hay (para no dejar el sistema sin ninguno)
+const countActiveAdmins = async () => {
+  const result = await db.query(
+    `SELECT COUNT(*)::int AS total
+     FROM users u JOIN roles r ON r.id = u.role_id
+     WHERE r.name = 'admin' AND u.is_active = TRUE`
+  );
+  return result.rows[0].total;
+};
+
 const updateRole = async (id, roleId) => {
   const result = await db.query(
     `UPDATE users SET role_id = $1 WHERE id = $2 RETURNING id, email, role_id`,
@@ -100,5 +110,5 @@ const updateStatus = async (id, isActive) => {
 
 module.exports = {
   findAll, findById, emailExists, getRoleId,
-  createUser, createUserWithStaff, updateRole, updateStatus,
+  createUser, createUserWithStaff, countActiveAdmins, updateRole, updateStatus,
 };

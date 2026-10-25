@@ -24,8 +24,9 @@ types.setTypeParser(1082, (v) => v);
 const pool = new Pool({
   connectionString: databaseUrl,
 
-  // Railway requiere SSL en producción; en local (Docker) no
-  ssl: isProd ? { rejectUnauthorized: false } : false,
+  // En producción, SSL verificando el certificado del servidor (evita
+  // un intermediario entre la API y la base); en local (Docker) no
+  ssl: isProd ? { rejectUnauthorized: true } : false,
 
   max: 10,                       // Máximo de conexiones simultáneas
   idleTimeoutMillis: 30_000,     // Cierra una conexión si está inactiva 30s
