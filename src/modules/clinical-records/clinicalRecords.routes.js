@@ -5,6 +5,7 @@ const controller = require('./clinicalRecords.controller');
 const validate = require('../../middlewares/validate.middleware');
 const validateParams = require('../../middlewares/validate-params.middleware');
 const authenticate = require('../../middlewares/auth.middleware');
+const { perUserLimiter } = require('../../middlewares/rate-limit.middleware');
 const authorize = require('../../middlewares/rbac.middleware');
 const { createRecordSchema, updateRecordSchema } = require('./clinicalRecords.validation');
 
@@ -13,13 +14,13 @@ const CLINICAL_ROLES = ['admin', 'dentist'];
 
 // Router anidado: /api/v1/patients/:patientId/records
 const patientRecordsRouter = express.Router({ mergeParams: true });
-patientRecordsRouter.use(authenticate);
+patientRecordsRouter.use(authenticate, perUserLimiter);
 patientRecordsRouter.get('/',  authorize(...CLINICAL_ROLES), validateParams('patientId'), controller.listByPatient);
 patientRecordsRouter.post('/', authorize(...CLINICAL_ROLES), validateParams('patientId'), validate(createRecordSchema), controller.create);
 
 // Router suelto: /api/v1/records
 const recordsRouter = express.Router();
-recordsRouter.use(authenticate);
+recordsRouter.use(authenticate, perUserLimiter);
 
 // IMPORTANTE: /recent debe ir ANTES de /:id, o Express tomaria
 // "recent" como si fuera un identificador.

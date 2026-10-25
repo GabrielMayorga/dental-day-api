@@ -2,11 +2,12 @@
 const express = require('express');
 const controller = require('./reports.controller');
 const authenticate = require('../../middlewares/auth.middleware');
+const { perUserLimiter } = require('../../middlewares/rate-limit.middleware');
 const authorize = require('../../middlewares/rbac.middleware');
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(authenticate, perUserLimiter);
 
 // Admin y odontólogos. El servicio filtra los datos según el rol.
 router.get('/dashboard',

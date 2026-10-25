@@ -9,11 +9,11 @@ require('express-async-errors');   // Permite usar async/await sin try/catch rep
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 
 const { port, corsOrigin, isDev, clinicTimezone } = require('./config/env');
 const db = require('./config/database');
 const logger = require('./config/logger');
+const { ipLimiter } = require('./middlewares/rate-limit.middleware');
 
 const { patientRecordsRouter, recordsRouter } = require('./modules/clinical-records/clinicalRecords.routes');
 
@@ -34,15 +34,13 @@ app.use(cors({
   origin: corsOrigin,           // Solo tu frontend puede llamar a esta API
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: false,           // Usamos Bearer, no cookies: no hace falta enviar credenciales
+  // Para que el frontend pueda leer cuánto esperar tras un 429
+  exposedHeaders: ['Retry-After', 'RateLimit', 'RateLimit-Policy'],
 }));
 
-// Límite global: máx. 100 peticiones por IP cada 15 minutos
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: { error: 'Demasiadas peticiones. Intenta en 15 minutos.' },
-});
-app.use(globalLimiter);
+// Freno por IP (RATE_LIMIT_IP_MAX cada 15 min). El límite por usuario
+// se aplica en cada router privado, después de authenticate.
+app.use(ipLimiter);
 
 // ── PARSEO DE PETICIONES ─────────────────
 app.use(express.json({ limit: '100kb' }));

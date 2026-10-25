@@ -56,6 +56,12 @@ const envSchema = Joi.object({
       }
     })
     .default('America/Managua'),
+
+  // Límites de peticiones (ver src/middlewares/rate-limit.middleware.js)
+  RATE_LIMIT_IP_MAX: Joi.number().integer().min(1).default(1000),        // por IP, cada 15 min
+  RATE_LIMIT_USER_MAX: Joi.number().integer().min(1).default(600),       // por usuario, cada 15 min
+  LOGIN_MAX_PER_IP_EMAIL: Joi.number().integer().min(1).default(5),      // fallos por IP+correo, cada 15 min
+  LOGIN_MAX_PER_EMAIL: Joi.number().integer().min(1).default(10),        // fallos por correo, cada hora
 })
   .unknown(true) // Ignora otras variables del sistema operativo que no nos interesan
   .required();
@@ -85,6 +91,12 @@ module.exports = {
   bcryptRounds: env.BCRYPT_ROUNDS,
   corsOrigin: env.CORS_ORIGIN,
   clinicTimezone: env.CLINIC_TIMEZONE,
+  rateLimit: {
+    ipMax: env.RATE_LIMIT_IP_MAX,
+    userMax: env.RATE_LIMIT_USER_MAX,
+    loginMaxPerIpEmail: env.LOGIN_MAX_PER_IP_EMAIL,
+    loginMaxPerEmail: env.LOGIN_MAX_PER_EMAIL,
+  },
   isDev: env.NODE_ENV === 'development',
   isProd: env.NODE_ENV === 'production',
 };

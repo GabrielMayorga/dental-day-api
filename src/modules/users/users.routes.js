@@ -5,6 +5,7 @@ const controller = require('./users.controller');
 const validate = require('../../middlewares/validate.middleware');
 const validateParams = require('../../middlewares/validate-params.middleware');
 const authenticate = require('../../middlewares/auth.middleware');
+const { perUserLimiter } = require('../../middlewares/rate-limit.middleware');
 const authorize = require('../../middlewares/rbac.middleware');
 const {
   createUserSchema, changeRoleSchema, changeStatusSchema,
@@ -12,7 +13,7 @@ const {
 
 const router = express.Router();
 
-router.use(authenticate);
+router.use(authenticate, perUserLimiter);
 router.use(authorize('admin'));  // todo el módulo es solo para admin
 
 router.get('/', controller.list);

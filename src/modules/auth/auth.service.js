@@ -4,8 +4,9 @@
 // Coordina el repositorio, bcrypt y JWT. No toca HTTP ni SQL
 // directamente — solo orquesta las reglas del negocio.
 // ============================================================
+const crypto = require('crypto');
 const authRepository = require('./auth.repository');
-const { comparePassword } = require('../../shared/utils/password.util');
+const { hashPassword, comparePassword } = require('../../shared/utils/password.util');
 const {
   generateAccessToken,
   generateRefreshToken,
@@ -14,6 +15,12 @@ const {
   UnauthorizedError,
   ForbiddenError,
 } = require('../../shared/errors/app-error');
+
+// Hash ficticio, generado al arrancar con las mismas rondas que los
+// reales. Si el correo no existe comparamos contra él, para que la
+// respuesta tarde lo mismo que con un correo real y el tiempo no
+// delate qué correos están registrados.
+const dummyHashPromise = hashPassword(crypto.randomBytes(32).toString('hex'));
 
 /**
  * Procesa el inicio de sesión de un usuario.
@@ -28,25 +35,27 @@ const login = async (email, password) => {
   // ── Paso 1: Buscar el usuario por su email ──
   const user = await authRepository.findByEmail(email);
 
-  // Si no existe, lanzamos el MISMO error que para contraseña mala.
-  // No revelamos si el problema fue el email o la contraseña
-  // (previene la enumeración de usuarios).
-  if (!user) {
-    throw new UnauthorizedError('Credenciales inválidas');
+  // ── Paso 2: Comparar la contraseña ──
+  // Siempre ejecutamos bcrypt, exista o no el usuario: si no existe,
+  // contra el hash ficticio (el resultado se descarta).
+  let passwordMatches = false;
+  if (user) {
+    passwordMatches = await comparePassword(password, user.password_hash);
+  } else {
+    await comparePassword(password, await dummyHashPromise);
   }
 
-  // ── Paso 2: Verificar que la cuenta esté activa ──
-  // Aquí sí distinguimos: una cuenta desactivada es un caso legítimo
-  // (el admin la suspendió), por eso usamos 403, no 401.
-  if (!user.is_active) {
-    throw new ForbiddenError('Tu cuenta está desactivada. Contacta al administrador.');
-  }
-
-  // ── Paso 3: Comparar la contraseña con el hash guardado ──
-  const passwordMatches = await comparePassword(password, user.password_hash);
-
+  // El MISMO error para correo inexistente y contraseña mala: no
+  // revelamos cuál de los dos falló (previene la enumeración).
   if (!passwordMatches) {
     throw new UnauthorizedError('Credenciales inválidas');
+  }
+
+  // ── Paso 3: Verificar que la cuenta esté activa ──
+  // Solo se revela con la contraseña correcta: quien no la conoce
+  // no puede saber si una cuenta existe y está desactivada.
+  if (!user.is_active) {
+    throw new ForbiddenError('Tu cuenta está desactivada. Comunícate con la administración');
   }
 
   // ── Paso 4: Generar los tokens ──

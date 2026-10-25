@@ -4,13 +4,14 @@ const controller = require('./invoices.controller');
 const validate = require('../../middlewares/validate.middleware');
 const validateParams = require('../../middlewares/validate-params.middleware');
 const authenticate = require('../../middlewares/auth.middleware');
+const { perUserLimiter } = require('../../middlewares/rate-limit.middleware');
 const authorize = require('../../middlewares/rbac.middleware');
 const { createInvoiceSchema, changeStatusSchema } = require('./invoices.validation');
 
 const router = express.Router();
 const ALLOWED_ROLES = ['admin', 'dentist', 'receptionist'];
 
-router.use(authenticate);
+router.use(authenticate, perUserLimiter);
 
 router.get('/',    authorize(...ALLOWED_ROLES), controller.list);
 router.get('/:id', authorize(...ALLOWED_ROLES), validateParams('id'), controller.getById);
