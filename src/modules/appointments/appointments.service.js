@@ -5,6 +5,8 @@
 // ============================================================
 const db = require('../../config/database');
 const appointmentsRepository = require('./appointments.repository');
+const audit = require('../../shared/audit/audit.service');
+const ACCIONES = require('../../shared/audit/acciones');
 const {
   NotFoundError,
   ConflictError,
@@ -18,7 +20,7 @@ const {
  *                        treatment_id (opcional), duration_minutes (opcional),
  *                        reason, notes, created_by
  */
-const createAppointment = async (data) => {
+const createAppointment = async (data, req) => {
   const {
     patient_id, staff_id, scheduled_at, treatment_id,
     reason, notes, created_by,
@@ -65,11 +67,18 @@ const createAppointment = async (data) => {
   );
   const status_id = status.rows[0].id;
 
-  // ── Crear la cita, capturando el error de solapamiento ──
+  // ── Crear la cita y auditarla, capturando el error de solapamiento ──
   try {
-    return await appointmentsRepository.create({
-      patient_id, staff_id, status_id, scheduled_at,
-      duration_minutes, reason, notes, created_by,
+    return await db.withTransaction(async (client) => {
+      const appointment = await appointmentsRepository.create({
+        patient_id, staff_id, status_id, scheduled_at,
+        duration_minutes, reason, notes, created_by,
+      }, client);
+      await audit.registrar(client, {
+        req, accion: ACCIONES.CITA_CREADA, tabla: 'appointments',
+        registroId: appointment.id, despues: appointment,
+      });
+      return appointment;
     });
   } catch (err) {
     // 23P01 = exclusion_violation: la restricción anti-solapamiento se activó.
@@ -132,13 +141,7 @@ const NOMBRE_ESTADO = {
 /**
  * Cambia el estado de una cita (confirmar, completar, cancelar, etc.).
  */
-const changeStatus = async (id, statusName, cancelledReason) => {
-  // La cita debe existir
-  const appointment = await appointmentsRepository.findById(id);
-  if (!appointment) {
-    throw new NotFoundError('La cita no existe');
-  }
-
+const changeStatus = async (id, statusName, cancelledReason, req) => {
   // El estado solicitado debe ser válido
   const status = await db.query(
     `SELECT id FROM appointment_statuses WHERE name = $1`,
@@ -148,38 +151,45 @@ const changeStatus = async (id, statusName, cancelledReason) => {
     throw new BadRequestError(`Estado inválido: ${statusName}`);
   }
 
-    if (status.rows.length === 0) {
-    throw new BadRequestError(`Estado inválido: ${statusName}`);
-  }
+  return db.withTransaction(async (client) => {
+    // La cita debe existir (queda bloqueada hasta el COMMIT)
+    const appointment = await appointmentsRepository.lockById(id, client);
+    if (!appointment) {
+      throw new NotFoundError('La cita no existe');
+    }
 
-  // ── Regla: la transición debe ser válida según la máquina de estados ──
-  // findById ya trae status_name gracias al JOIN con appointment_statuses.
-  const estadoActual = appointment.status_name;
-  const permitidos = TRANSICIONES_VALIDAS[estadoActual] ?? [];
+    // ── Regla: la transición debe ser válida según la máquina de estados ──
+    // lockById trae status_name gracias al JOIN con appointment_statuses.
+    const estadoActual = appointment.status_name;
+    const permitidos = TRANSICIONES_VALIDAS[estadoActual] ?? [];
 
-  if (estadoActual === statusName) {
-    throw new BadRequestError(
-      `La cita ya está en estado "${NOMBRE_ESTADO[statusName]}"`
+    if (estadoActual === statusName) {
+      throw new BadRequestError(
+        `La cita ya está en estado "${NOMBRE_ESTADO[statusName]}"`
+      );
+    }
+
+    if (!permitidos.includes(statusName)) {
+      const opciones = permitidos.length
+        ? permitidos.map((e) => NOMBRE_ESTADO[e]).join(', ')
+        : 'ninguno, es un estado final';
+      throw new BadRequestError(
+        `No se puede pasar de "${NOMBRE_ESTADO[estadoActual]}" a ` +
+        `"${NOMBRE_ESTADO[statusName]}". Transiciones permitidas: ${opciones}`
+      );
+    }
+
+    const updated = await appointmentsRepository.updateStatus(
+      id, status.rows[0].id, cancelledReason ?? null, client
     );
-  }
-
-  if (!permitidos.includes(statusName)) {
-    const opciones = permitidos.length
-      ? permitidos.map((e) => NOMBRE_ESTADO[e]).join(', ')
-      : 'ninguno, es un estado final';
-    throw new BadRequestError(
-      `No se puede pasar de "${NOMBRE_ESTADO[estadoActual]}" a ` +
-      `"${NOMBRE_ESTADO[statusName]}". Transiciones permitidas: ${opciones}`
-    );
-  }
-
-  return appointmentsRepository.updateStatus(
-    id, status.rows[0].id, cancelledReason ?? null
-  );
-
-  return appointmentsRepository.updateStatus(
-    id, status.rows[0].id, cancelledReason ?? null
-  );
+    await audit.registrar(client, {
+      req, accion: ACCIONES.CITA_ESTADO_CAMBIADO, tabla: 'appointments',
+      registroId: id,
+      antes:   { status: estadoActual, cancelled_reason: appointment.cancelled_reason },
+      despues: { status: statusName,   cancelled_reason: updated.cancelled_reason },
+    });
+    return updated;
+  });
 };
 
 module.exports = {

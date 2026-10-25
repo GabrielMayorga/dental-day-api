@@ -1,8 +1,12 @@
 // src/modules/patients/patients.repository.js
 const db = require('../../config/database');
 
-const create = async ({ first_name, last_name, birth_date, gender, phone, address, city, emergency_contact_name, emergency_contact_phone, blood_type, allergies, notes, user_id, created_by }) => {
-  const result = await db.query(
+// Las funciones de escritura reciben un client opcional: el de la
+// transacción en curso, para que el cambio y su registro de auditoría
+// se confirmen o se reviertan juntos. Sin él, usan el pool (db).
+
+const create = async ({ first_name, last_name, birth_date, gender, phone, address, city, emergency_contact_name, emergency_contact_phone, blood_type, allergies, notes, user_id, created_by }, client = db) => {
+  const result = await client.query(
     `INSERT INTO patients
        (first_name, last_name, birth_date, gender, phone, address, city,
         emergency_contact_name, emergency_contact_phone, blood_type,
@@ -31,8 +35,8 @@ const findAll = async (search = '') => {
   return result.rows;
 };
 
-const findById = async (id) => {
-  const result = await db.query(
+const findById = async (id, client = db) => {
+  const result = await client.query(
     `SELECT id, first_name, last_name, birth_date, gender, phone, address,
             city, emergency_contact_name, emergency_contact_phone, blood_type,
             allergies, notes, user_id, created_by, created_at, updated_at
@@ -43,7 +47,17 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
-const update = async (id, fields) => {
+// Lee la fila completa y la bloquea hasta el fin de la transacción:
+// es el "antes" de la auditoría y nadie puede cambiarla en medio.
+const lockById = async (id, client) => {
+  const result = await client.query(
+    `SELECT * FROM patients WHERE id = $1 AND is_active = TRUE FOR UPDATE`,
+    [id]
+  );
+  return result.rows[0] || null;
+};
+
+const update = async (id, fields, client = db) => {
   // Lista blanca: solo estas columnas se pueden actualizar.
   // Cualquier otra clave se ignora — defensa contra inyección por nombre de columna.
   const allowed = [
@@ -57,7 +71,7 @@ const update = async (id, fields) => {
 
   // Si no hay nada válido que actualizar, no hacemos la query
   if (columns.length === 0) {
-    return findById(id);
+    return findById(id, client);
   }
 
   const values = columns.map((col) => fields[col]);
@@ -66,7 +80,7 @@ const update = async (id, fields) => {
     .map((col, i) => `${col} = $${i + 1}`)
     .join(', ');
 
-  const result = await db.query(
+  const result = await client.query(
     `UPDATE patients
      SET ${setClause}
      WHERE id = $${columns.length + 1} AND is_active = TRUE
@@ -76,12 +90,12 @@ const update = async (id, fields) => {
   return result.rows[0] || null;
 };
 
-const softDelete = async (id) => {
-  const result = await db.query(
-    `UPDATE patients SET is_active = FALSE WHERE id = $1 AND is_active = TRUE RETURNING id`,
+const softDelete = async (id, client = db) => {
+  const result = await client.query(
+    `UPDATE patients SET is_active = FALSE WHERE id = $1 AND is_active = TRUE RETURNING id, is_active`,
     [id]
   );
   return result.rows[0] || null;
 };
 
-module.exports = { create, findAll, findById, update, softDelete };
+module.exports = { create, findAll, findById, lockById, update, softDelete };

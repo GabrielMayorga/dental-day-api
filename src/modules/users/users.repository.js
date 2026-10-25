@@ -1,6 +1,9 @@
 // src/modules/users/users.repository.js
 const db = require('../../config/database');
 
+// Las escrituras reciben un client opcional (el de la transacción en
+// curso, para auditar en la misma transacción). Sin él, usan el pool.
+
 // Lista usuarios con su rol y nombre. NUNCA devuelve password_hash.
 const findAll = async () => {
   const result = await db.query(
@@ -27,6 +30,20 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
+// Como findById, pero bloquea la fila del usuario hasta el fin de la
+// transacción (el "antes" de la auditoría)
+const lockById = async (id, client) => {
+  const result = await client.query(
+    `SELECT u.id, u.email, u.full_name, u.is_active, u.role_id,
+            r.name AS role_name
+     FROM users u JOIN roles r ON r.id = u.role_id
+     WHERE u.id = $1
+     FOR UPDATE OF u`,
+    [id]
+  );
+  return result.rows[0] || null;
+};
+
 const emailExists = async (email) => {
   const result = await db.query(`SELECT id FROM users WHERE email = $1`, [email]);
   return result.rows.length > 0;
@@ -38,8 +55,8 @@ const getRoleId = async (roleName) => {
 };
 
 // Crea SOLO un usuario (roles que no son odontólogo)
-const createUser = async ({ email, passwordHash, roleId, fullName }) => {
-  const result = await db.query(
+const createUser = async ({ email, passwordHash, roleId, fullName }, client = db) => {
+  const result = await client.query(
     `INSERT INTO users (email, password_hash, role_id, full_name)
      VALUES ($1, $2, $3, $4)
      RETURNING id, email, full_name, is_active, created_at`,
@@ -48,43 +65,27 @@ const createUser = async ({ email, passwordHash, roleId, fullName }) => {
   return result.rows[0];
 };
 
-// Crea usuario + staff en una TRANSACCIÓN (odontólogos)
+// Crea usuario + staff (odontólogos). Debe llamarse con el client de
+// una transacción: si falla el staff, el usuario tampoco queda.
 const createUserWithStaff = async ({
   email, passwordHash, roleId, fullName,
   first_name, last_name, speciality, phone,
-}) => {
-  const client = await db.getClient();
-  try {
-    await client.query('BEGIN');
+}, client) => {
+  const user = await createUser({ email, passwordHash, roleId, fullName }, client);
 
-    const userResult = await client.query(
-      `INSERT INTO users (email, password_hash, role_id, full_name)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, email, full_name, is_active, created_at`,
-      [email, passwordHash, roleId, fullName]
-    );
-    const user = userResult.rows[0];
+  const staffResult = await client.query(
+    `INSERT INTO staff (user_id, first_name, last_name, speciality, phone)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [user.id, first_name, last_name, speciality ?? null, phone ?? null]
+  );
 
-    const staffResult = await client.query(
-      `INSERT INTO staff (user_id, first_name, last_name, speciality, phone)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id`,
-      [user.id, first_name, last_name, speciality ?? null, phone ?? null]
-    );
-
-    await client.query('COMMIT');
-    return { ...user, staff_id: staffResult.rows[0].id, first_name, last_name, speciality };
-  } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
-  }
+  return { ...user, staff_id: staffResult.rows[0].id, first_name, last_name, speciality };
 };
 
 // Cuántos administradores activos hay (para no dejar el sistema sin ninguno)
-const countActiveAdmins = async () => {
-  const result = await db.query(
+const countActiveAdmins = async (client = db) => {
+  const result = await client.query(
     `SELECT COUNT(*)::int AS total
      FROM users u JOIN roles r ON r.id = u.role_id
      WHERE r.name = 'admin' AND u.is_active = TRUE`
@@ -92,16 +93,16 @@ const countActiveAdmins = async () => {
   return result.rows[0].total;
 };
 
-const updateRole = async (id, roleId) => {
-  const result = await db.query(
+const updateRole = async (id, roleId, client = db) => {
+  const result = await client.query(
     `UPDATE users SET role_id = $1 WHERE id = $2 RETURNING id, email, role_id`,
     [roleId, id]
   );
   return result.rows[0] || null;
 };
 
-const updateStatus = async (id, isActive) => {
-  const result = await db.query(
+const updateStatus = async (id, isActive, client = db) => {
+  const result = await client.query(
     `UPDATE users SET is_active = $1 WHERE id = $2 RETURNING id, email, is_active`,
     [isActive, id]
   );
@@ -109,6 +110,6 @@ const updateStatus = async (id, isActive) => {
 };
 
 module.exports = {
-  findAll, findById, emailExists, getRoleId,
+  findAll, findById, lockById, emailExists, getRoleId,
   createUser, createUserWithStaff, countActiveAdmins, updateRole, updateStatus,
 };

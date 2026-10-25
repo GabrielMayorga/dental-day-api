@@ -5,6 +5,9 @@
 // ============================================================
 const db = require('../../config/database');
 
+// Las escrituras reciben un client opcional (el de la transacción en
+// curso, para auditar en la misma transacción). Sin él, usan el pool.
+
 // Lista los registros de un paciente, del más reciente al más antiguo.
 // JOIN con staff para mostrar quién lo registró.
 const findByPatient = async (patientId) => {
@@ -24,8 +27,8 @@ const findByPatient = async (patientId) => {
 };
 
 // Busca un registro por su id (con nombre del odontólogo y del paciente)
-const findById = async (id) => {
-  const result = await db.query(
+const findById = async (id, client = db) => {
+  const result = await client.query(
     `SELECT
        cr.id, cr.patient_id, cr.staff_id, cr.appointment_id,
        cr.chief_complaint, cr.diagnosis, cr.treatment_plan, cr.notes,
@@ -41,12 +44,22 @@ const findById = async (id) => {
   return result.rows[0] || null;
 };
 
+// Lee la fila completa y la bloquea hasta el fin de la transacción
+// (el "antes" de la auditoría)
+const lockById = async (id, client) => {
+  const result = await client.query(
+    `SELECT * FROM clinical_records WHERE id = $1 FOR UPDATE`,
+    [id]
+  );
+  return result.rows[0] || null;
+};
+
 // Crea un registro clínico
 const create = async ({
   patient_id, staff_id, appointment_id,
   chief_complaint, diagnosis, treatment_plan, notes,
-}) => {
-  const result = await db.query(
+}, client = db) => {
+  const result = await client.query(
     `INSERT INTO clinical_records
        (patient_id, staff_id, appointment_id,
         chief_complaint, diagnosis, treatment_plan, notes)
@@ -60,15 +73,15 @@ const create = async ({
 };
 
 // Actualiza un registro (lista blanca de columnas, como en pacientes)
-const update = async (id, fields) => {
+const update = async (id, fields, client = db) => {
   const allowed = ['chief_complaint', 'diagnosis', 'treatment_plan', 'notes'];
   const columns = Object.keys(fields).filter((c) => allowed.includes(c));
-  if (columns.length === 0) return findById(id);
+  if (columns.length === 0) return findById(id, client);
 
   const values = columns.map((c) => fields[c]);
   const setClause = columns.map((c, i) => `${c} = $${i + 1}`).join(', ');
 
-  const result = await db.query(
+  const result = await client.query(
     `UPDATE clinical_records SET ${setClause}
      WHERE id = $${columns.length + 1} RETURNING *`,
     [...values, id]
@@ -98,4 +111,4 @@ const findRecent = async (limit = 50) => {
   return result.rows;
 };
 
-module.exports = { findByPatient, findById, create, update, findRecent };
+module.exports = { findByPatient, findById, lockById, create, update, findRecent };

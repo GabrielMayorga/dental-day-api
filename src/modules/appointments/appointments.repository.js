@@ -4,6 +4,9 @@
 // ============================================================
 const db = require('../../config/database');
 
+// Las escrituras reciben un client opcional (el de la transacción en
+// curso, para auditar en la misma transacción). Sin él, usan el pool.
+
 /**
  * Crea una cita.
  * Nota: duration_minutes ya viene resuelta desde el servicio
@@ -12,8 +15,8 @@ const db = require('../../config/database');
 const create = async ({
   patient_id, staff_id, status_id, scheduled_at,
   duration_minutes, reason, notes, created_by,
-}) => {
-  const result = await db.query(
+}, client = db) => {
+  const result = await client.query(
     `INSERT INTO appointments
        (patient_id, staff_id, status_id, scheduled_at,
         duration_minutes, reason, notes, created_by)
@@ -84,11 +87,27 @@ const findById = async (id) => {
 };
 
 /**
+ * Lee la cita con el nombre de su estado y la bloquea hasta el fin de
+ * la transacción (el "antes" de la auditoría).
+ */
+const lockById = async (id, client) => {
+  const result = await client.query(
+    `SELECT a.id, a.status_id, a.cancelled_reason, st.name AS status_name
+     FROM appointments a
+     JOIN appointment_statuses st ON st.id = a.status_id
+     WHERE a.id = $1
+     FOR UPDATE OF a`,
+    [id]
+  );
+  return result.rows[0] || null;
+};
+
+/**
  * Cambia el estado de una cita (ej: a 'confirmed', 'cancelled', etc.).
  * Si se cancela, guarda el motivo.
  */
-const updateStatus = async (id, statusId, cancelledReason = null) => {
-  const result = await db.query(
+const updateStatus = async (id, statusId, cancelledReason = null, client = db) => {
+  const result = await client.query(
     `UPDATE appointments
         SET status_id = $1,
             cancelled_reason = $2
@@ -99,4 +118,4 @@ const updateStatus = async (id, statusId, cancelledReason = null) => {
   return result.rows[0] || null;
 };
 
-module.exports = { create, findAll, findById, updateStatus };
+module.exports = { create, findAll, findById, lockById, updateStatus };

@@ -50,8 +50,8 @@ const findById = async (id) => {
 /**
  * Actualiza la fecha del último login del usuario.
  */
-const updateLastLogin = async (id) => {
-  await db.query(
+const updateLastLogin = async (id, client = db) => {
+  await client.query(
     `UPDATE users SET last_login = NOW() WHERE id = $1`,
     [id]
   );
