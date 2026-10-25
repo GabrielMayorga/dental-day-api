@@ -14,12 +14,12 @@ const create = async (req, res) => {
 
 const findAll = async (req, res) => {
   const { from, to, staffId } = req.query;
-  const appointments = await appointmentsService.listAppointments({ from, to, staffId });
+  const appointments = await appointmentsService.listAppointments({ from, to, staffId }, req);
   res.json({ data: appointments });
 };
 
 const findById = async (req, res) => {
-  const appointment = await appointmentsService.getAppointment(req.params.id);
+  const appointment = await appointmentsService.getAppointment(req.params.id, req);
   res.json({ data: appointment });
 };
 

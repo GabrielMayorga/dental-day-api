@@ -28,7 +28,10 @@ const findByEmail = async (email) => {
 };
 
 /**
- * Busca un usuario por su ID, incluyendo el nombre de su rol.
+ * Busca un usuario por su ID, incluyendo el nombre de su rol y su
+ * ficha de personal (staff_id), si tiene. Las reglas de acceso
+ * clínico comparan staff_id: quién firma una historia, de quién
+ * es una cita.
  */
 const findById = async (id) => {
   const result = await db.query(
@@ -37,9 +40,11 @@ const findById = async (id) => {
        u.email,
        u.is_active,
        u.role_id,
-       r.name AS role_name
+       r.name AS role_name,
+       s.id   AS staff_id
      FROM users u
      JOIN roles r ON r.id = u.role_id
+     LEFT JOIN staff s ON s.user_id = u.id
      WHERE u.id = $1`,
     [id]
   );

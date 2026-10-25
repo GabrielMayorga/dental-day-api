@@ -1,8 +1,9 @@
 // src/shared/audit/acciones.js
 // ============================================================
 // Catálogo de acciones de auditoría (columna audit_logs.action).
-// El CHECK de la migración 006 admite exactamente esta lista:
-// si agregas una acción aquí, agrégala también allí.
+// El CHECK de audit_logs admite exactamente esta lista (última
+// versión: migración 007). Si agregas una acción aquí, crea una
+// migración que la agregue también allí.
 // ============================================================
 const ACCIONES = Object.freeze({
   LOGIN_EXITOSO:           'LOGIN_EXITOSO',
@@ -23,6 +24,9 @@ const ACCIONES = Object.freeze({
   CITA_CREADA:             'CITA_CREADA',
   CITA_ESTADO_CAMBIADO:    'CITA_ESTADO_CAMBIADO',
   CITA_REPROGRAMADA:       'CITA_REPROGRAMADA',
+
+  // Rechazo de una acción por las reglas de acceso clínico (403)
+  ACCESO_DENEGADO:         'ACCESO_DENEGADO',
 });
 
 module.exports = ACCIONES;

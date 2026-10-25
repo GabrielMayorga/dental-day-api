@@ -8,12 +8,12 @@ const create = async (req, res) => {
 
 const findAll = async (req, res) => {
   const { search = '' } = req.query;
-  const patients = await patientsService.findAll(search);
+  const patients = await patientsService.findAll(search, req.user.role);
   res.status(200).json({ data: patients });
 };
 
 const findById = async (req, res) => {
-  const patient = await patientsService.findById(req.params.id);
+  const patient = await patientsService.findById(req.params.id, req.user.role);
   res.status(200).json({ data: patient });
 };
 

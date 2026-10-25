@@ -14,6 +14,7 @@ const steps = [
   { label: 'Migración 001 — Esquema',     file: '../migrations/001_initial_schema.sql' },
   { label: 'Seed 001 — Datos iniciales',  file: '../seeds/001_seed_data.sql' },
   { label: 'Migración 006 — Auditoría inmutable', file: '../migrations/006_audit_inmutable.sql' },
+  { label: 'Migración 007 — Acceso denegado auditado', file: '../migrations/007_acceso_denegado.sql' },
 ];
 
 async function setupDatabase() {

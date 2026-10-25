@@ -7,6 +7,10 @@ const { NotFoundError } = require('../../shared/errors/app-error');
 
 // Cada escritura va en una transacción junto con su registro de
 // auditoría: si la auditoría falla, el cambio se revierte.
+//
+// La auditoría guarda la fila completa; la respuesta se vuelve a leer
+// con las columnas del rol (recepción: solo contacto), para que una
+// edición no devuelva datos médicos que ese rol no puede ver.
 
 const create = async (data, createdBy, req) => {
   return db.withTransaction(async (client) => {
@@ -15,16 +19,16 @@ const create = async (data, createdBy, req) => {
       req, accion: ACCIONES.PACIENTE_CREADO, tabla: 'patients',
       registroId: patient.id, despues: patient,
     });
-    return patient;
+    return patientsRepository.findById(patient.id, req.user.role, client);
   });
 };
 
-const findAll = async (search) => {
-  return patientsRepository.findAll(search);
+const findAll = async (search, rol) => {
+  return patientsRepository.findAll(search, rol);
 };
 
-const findById = async (id) => {
-  const patient = await patientsRepository.findById(id);
+const findById = async (id, rol) => {
+  const patient = await patientsRepository.findById(id, rol);
   if (!patient) {
     throw new NotFoundError('Paciente no encontrado');
   }
@@ -42,7 +46,7 @@ const update = async (id, fields, req) => {
       req, accion: ACCIONES.PACIENTE_EDITADO, tabla: 'patients',
       registroId: id, antes: existing, despues: updated,
     });
-    return updated;
+    return patientsRepository.findById(id, req.user.role, client);
   });
 };
 
