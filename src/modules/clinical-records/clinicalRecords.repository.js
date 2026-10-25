@@ -11,13 +11,19 @@ const db = require('../../config/database');
 // Plazo de corrección: solo el autor, dentro de las 24 h desde la
 // creación (docs/politica-acceso-clinico.md). Se calcula en SQL con
 // el reloj de la base, no con el del servidor de la API.
-const EN_PLAZO = `cr.created_at > now() - interval '24 hours'`;
+const PLAZO = `interval '24 hours'`;
+const EN_PLAZO = `cr.created_at > now() - ${PLAZO}`;
 
 // puede_editar para quien consulta. autorStaffId es la ficha del
 // odontólogo que pregunta, o null (admin: nunca edita contenido
 // clínico). Con null la comparación da NULL y COALESCE la deja en FALSE.
-const puedeEditar = (param) =>
-  `COALESCE(cr.staff_id = ${param}::uuid AND ${EN_PLAZO}, FALSE) AS puede_editar`;
+// editable_hasta es el fin del plazo, solo si puede_editar (la
+// interfaz lo muestra; no recalcula la regla).
+const puedeEditar = (param) => {
+  const puede = `COALESCE(cr.staff_id = ${param}::uuid AND ${EN_PLAZO}, FALSE)`;
+  return `${puede} AS puede_editar,
+       CASE WHEN ${puede} THEN cr.created_at + ${PLAZO} END AS editable_hasta`;
+};
 
 // Lista los registros de un paciente, del más reciente al más antiguo.
 // JOIN con staff para mostrar quién lo registró.

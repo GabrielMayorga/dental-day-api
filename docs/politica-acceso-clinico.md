@@ -26,8 +26,10 @@ crea, es decir, su ficha de personal (`staff_id`):
   petición trae el `staff_id` de otro odontólogo, la API responde 400:
   "No puedes firmar un registro a nombre de otro odontólogo".
 - El admin tiene que indicar el `staff_id` del odontólogo a cuyo nombre
-  crea el registro. En la auditoría (`HISTORIA_CREADA`), el admin queda
-  como autor de la acción y el odontólogo como firmante.
+  crea el registro. Esa ficha debe ser de un usuario con rol de
+  odontólogo: el admin no puede firmar con su propia ficha. En la
+  auditoría (`HISTORIA_CREADA`), el admin queda como autor de la acción
+  y el odontólogo como firmante.
 - Si el registro se vincula a una cita, esa cita debe ser del mismo
   paciente. Si no lo es, la API responde 400.
 
@@ -43,7 +45,9 @@ hace agregando un registro nuevo. La historia original no se modifica.
 - El admin no edita contenido clínico.
 
 Cada historia que devuelve la API trae el campo `puede_editar`, que dice
-si quien consulta puede corregirla en ese momento.
+si quien consulta puede corregirla en ese momento, y `editable_hasta`,
+el fin del plazo (solo cuando `puede_editar` es verdadero; si no, null).
+La interfaz muestra esa hora sin recalcular el plazo.
 
 ## 3. Datos de pacientes para recepción
 

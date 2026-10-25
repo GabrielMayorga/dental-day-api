@@ -94,9 +94,15 @@ const createForPatient = (patientId, data, req) => conAuditoriaDeRechazos(req, a
     throw new NotFoundError('El paciente no existe o está inactivo');
   }
 
-  // Validar que el odontólogo exista
+  // Validar que el firmante exista y sea odontólogo: el admin no puede
+  // firmar con su propia ficha ni con la de otro rol
   const staff = await db.query(
-    `SELECT id FROM staff WHERE id = $1 AND is_active = TRUE`, [staffId]
+    `SELECT s.id
+     FROM staff s
+     JOIN users u ON u.id = s.user_id
+     JOIN roles r ON r.id = u.role_id
+     WHERE s.id = $1 AND s.is_active = TRUE AND r.name = 'dentist'`,
+    [staffId]
   );
   if (staff.rows.length === 0) {
     throw new NotFoundError('El odontólogo no existe o está inactivo');
@@ -119,10 +125,9 @@ const createForPatient = (patientId, data, req) => conAuditoriaDeRechazos(req, a
       req, accion: ACCIONES.HISTORIA_CREADA, tabla: 'clinical_records',
       registroId: record.id, despues: record,
     });
-    // Recién creado: lo puede corregir quien lo firmó, si es un
-    // odontólogo (un registro creado por el admin queda firmado por
-    // otro, y el admin no edita contenido clínico).
-    return { ...record, puede_editar: autorStaffId(req) === staffId };
+    // Se relee para devolver puede_editar y editable_hasta calculados
+    // en SQL, igual que en las lecturas
+    return repo.findById(record.id, autorStaffId(req), client);
   });
 });
 
@@ -150,8 +155,7 @@ const updateRecord = (id, fields, req) => conAuditoriaDeRechazos(req, () =>
       req, accion: ACCIONES.HISTORIA_EDITADA, tabla: 'clinical_records',
       registroId: id, antes: record, despues: updated,
     });
-    // Llegar aquí exige ser el autor y estar en plazo
-    return { ...updated, puede_editar: true };
+    return repo.findById(id, autorStaffId(req), client);
   }));
 
 module.exports = { listByPatient, getById, createForPatient, updateRecord, listRecent };
