@@ -2,9 +2,10 @@
 const Joi = require('joi');
 
 const createRecordSchema = Joi.object({
-  staff_id: Joi.string().uuid().required().messages({
+  // Opcional aquí: el servicio decide según el rol. Un odontólogo
+  // firma siempre con su propia ficha; el admin debe indicarla.
+  staff_id: Joi.string().uuid().messages({
     'string.guid': 'staff_id debe ser un UUID válido',
-    'any.required': 'El odontólogo es obligatorio',
   }),
   appointment_id: Joi.string().uuid().allow(null).messages({
     'string.guid': 'appointment_id debe ser un UUID válido',

@@ -5,7 +5,10 @@
 // directamente — solo orquesta las reglas del negocio.
 // ============================================================
 const crypto = require('crypto');
+const db = require('../../config/database');
 const authRepository = require('./auth.repository');
+const audit = require('../../shared/audit/audit.service');
+const ACCIONES = require('../../shared/audit/acciones');
 const { hashPassword, comparePassword } = require('../../shared/utils/password.util');
 const {
   generateAccessToken,
@@ -22,16 +25,25 @@ const {
 // delate qué correos están registrados.
 const dummyHashPromise = hashPassword(crypto.randomBytes(32).toString('hex'));
 
+// Login fallido: sin user_id (aunque el correo exista) y solo con el
+// correo intentado; nunca la contraseña.
+const registrarFallido = (req, email) =>
+  audit.registrar(db, {
+    req, accion: ACCIONES.LOGIN_FALLIDO, tabla: 'users',
+    usuarioId: null, despues: { email },
+  });
+
 /**
  * Procesa el inicio de sesión de un usuario.
  *
  * @param {string} email
  * @param {string} password - La contraseña en texto plano
+ * @param {object} req      - La petición, para la auditoría (IP, user-agent)
  * @returns {Promise<object>} Datos del usuario + tokens
  * @throws {UnauthorizedError} Si las credenciales son inválidas
  * @throws {ForbiddenError} Si la cuenta está desactivada
  */
-const login = async (email, password) => {
+const login = async (email, password, req) => {
   // ── Paso 1: Buscar el usuario por su email ──
   const user = await authRepository.findByEmail(email);
 
@@ -48,6 +60,7 @@ const login = async (email, password) => {
   // El MISMO error para correo inexistente y contraseña mala: no
   // revelamos cuál de los dos falló (previene la enumeración).
   if (!passwordMatches) {
+    await registrarFallido(req, email);
     throw new UnauthorizedError('Credenciales inválidas');
   }
 
@@ -55,6 +68,7 @@ const login = async (email, password) => {
   // Solo se revela con la contraseña correcta: quien no la conoce
   // no puede saber si una cuenta existe y está desactivada.
   if (!user.is_active) {
+    await registrarFallido(req, email);
     throw new ForbiddenError('Tu cuenta está desactivada. Comunícate con la administración');
   }
 
@@ -65,8 +79,14 @@ const login = async (email, password) => {
   const accessToken = generateAccessToken(payload);
   const refreshToken = generateRefreshToken({ id: user.id });
 
-  // Actualizamos la fecha del último login (dato de auditoría)
-  await authRepository.updateLastLogin(user.id);
+  // Fecha del último login y registro de auditoría, en una transacción
+  await db.withTransaction(async (client) => {
+    await authRepository.updateLastLogin(user.id, client);
+    await audit.registrar(client, {
+      req, accion: ACCIONES.LOGIN_EXITOSO, tabla: 'users',
+      registroId: user.id, usuarioId: user.id,
+    });
+  });
 
   // ── Devolvemos los datos del usuario (SIN el hash) + los tokens ──
   return {

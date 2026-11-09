@@ -61,6 +61,39 @@ const query = (text, params) => pool.query(text, params);
 const getClient = () => pool.connect();
 
 /**
+ * Ejecuta fn(client) entre BEGIN y COMMIT con un mismo cliente.
+ * Si fn lanza un error, hace ROLLBACK y lo vuelve a lanzar.
+ *
+ * Uso:
+ *   const paciente = await db.withTransaction(async (client) => {
+ *     const p = await repo.create(data, client);
+ *     await audit.registrar(client, { ... });
+ *     return p;
+ *   });
+ */
+const withTransaction = async (fn) => {
+  const client = await pool.connect();
+  let connectionBroken = false;
+  try {
+    await client.query('BEGIN');
+    const result = await fn(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Si ni el ROLLBACK funciona, la conexión está rota: se descarta
+      // del pool en vez de devolverla a medio usar.
+      connectionBroken = true;
+    }
+    throw err;
+  } finally {
+    client.release(connectionBroken);
+  }
+};
+
+/**
  * Verifica que la BD esté viva. Se usa al arrancar el servidor
  * y en la ruta /health.
  * clinic_now es la hora de pared de la clínica según la base: sirve
@@ -78,4 +111,4 @@ const healthCheck = async () => {
 
 const close = () => pool.end();
 
-module.exports = { query, getClient, healthCheck, close };
+module.exports = { query, getClient, withTransaction, healthCheck, close };

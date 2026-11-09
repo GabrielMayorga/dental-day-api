@@ -36,8 +36,16 @@ const baseFields = {
   notes:     Joi.string(),
 };
 
-const createPatientSchema = Joi.object({
-  ...baseFields,
+// Recepción solo maneja datos de contacto: sus esquemas no tienen
+// campos médicos (ni género, que tampoco puede ver). Lo que no está
+// en el esquema se descarta (stripUnknown en validate).
+const CAMPOS_CONTACTO = [
+  'first_name', 'last_name', 'birth_date', 'phone', 'address', 'city',
+  'emergency_contact_name', 'emergency_contact_phone',
+];
+const contactFields = Object.fromEntries(CAMPOS_CONTACTO.map((c) => [c, baseFields[c]]));
+
+const requiredNames = {
   first_name: baseFields.first_name.required().messages({
     'string.empty': 'El nombre es obligatorio',
     'any.required': 'El nombre es obligatorio',
@@ -46,10 +54,19 @@ const createPatientSchema = Joi.object({
     'string.empty': 'El apellido es obligatorio',
     'any.required': 'El apellido es obligatorio',
   }),
-});
+};
 
-const updatePatientSchema = Joi.object(baseFields).min(1).messages({
-  'object.min': 'Debes enviar al menos un campo para actualizar',
-});
+const minUno = { 'object.min': 'Debes enviar al menos un campo para actualizar' };
 
-module.exports = { createPatientSchema, updatePatientSchema };
+const createPatientSchema = Joi.object({ ...baseFields, ...requiredNames });
+const updatePatientSchema = Joi.object(baseFields).min(1).messages(minUno);
+
+const createPatientContactSchema = Joi.object({ ...contactFields, ...requiredNames });
+const updatePatientContactSchema = Joi.object(contactFields).min(1).messages(minUno);
+
+module.exports = {
+  createPatientSchema,
+  updatePatientSchema,
+  createPatientContactSchema,
+  updatePatientContactSchema,
+};

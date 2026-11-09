@@ -5,7 +5,7 @@ const create = async (req, res) => {
   const appointment = await appointmentsService.createAppointment({
     ...req.body,
     created_by: req.user.id,
-  });
+  }, req);
   res.status(201).json({
     message: 'Cita creada exitosamente',
     data: appointment,
@@ -14,19 +14,19 @@ const create = async (req, res) => {
 
 const findAll = async (req, res) => {
   const { from, to, staffId } = req.query;
-  const appointments = await appointmentsService.listAppointments({ from, to, staffId });
+  const appointments = await appointmentsService.listAppointments({ from, to, staffId }, req);
   res.json({ data: appointments });
 };
 
 const findById = async (req, res) => {
-  const appointment = await appointmentsService.getAppointment(req.params.id);
+  const appointment = await appointmentsService.getAppointment(req.params.id, req);
   res.json({ data: appointment });
 };
 
 const changeStatus = async (req, res) => {
   const { status, cancelled_reason } = req.body;
   const appointment = await appointmentsService.changeStatus(
-    req.params.id, status, cancelled_reason
+    req.params.id, status, cancelled_reason, req
   );
   res.json({
     message: 'Estado de la cita actualizado',
