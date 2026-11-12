@@ -23,7 +23,7 @@ Copy `.env` from `.env.example` (not yet committed). Required variables validate
 
 | Variable | Notes |
 |---|---|
-| `DATABASE_URL` | `postgresql://dental_user:dental_pass@localhost:5432/dental_day_db` for local Docker |
+| `DATABASE_URL` | `postgresql://dental_user:dental_pass@localhost:5433/dental_day_db` for local Docker |
 | `JWT_SECRET` | min 32 chars |
 | `JWT_REFRESH_SECRET` | min 32 chars |
 | `JWT_EXPIRES_IN` | default `15m` |
