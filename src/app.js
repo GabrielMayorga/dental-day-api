@@ -128,7 +128,8 @@ const start = async () => {
       logger.info(`🚀 Servidor corriendo en http://localhost:${port}`);
     });
   } catch (err) {
-    logger.error('❌ No se pudo conectar a la base de datos:', err.message);
+    // ECONNREFUSED llega como AggregateError con message vacío: mostrar el código
+    logger.error(`❌ No se pudo conectar a la base de datos: ${err.message || err.code || err}`);
     process.exit(1);
   }
 };
